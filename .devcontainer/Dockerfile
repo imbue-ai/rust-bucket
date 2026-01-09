@@ -2,8 +2,8 @@
 
 FROM rust:1.84-bookworm
 
-# Cache buster - increment to force rebuild: v2
-ARG CACHE_BUST=2
+# Cache buster - increment to force rebuild: v3
+ARG CACHE_BUST=3
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -15,14 +15,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install cargo-nextest (required test runner per TESTING.md)
-RUN curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C /usr/local/bin
+# Build from source to avoid architecture compatibility issues
+RUN cargo install cargo-nextest --locked
 
 # Install Beads task tracker (required per AGENTS.md and WORKFLOW.md)
 # bd must be available on PATH
 # NOTE: Beads is a Go project, NOT a Rust crate. Install via official shell script.
 # Do NOT use "cargo install beads" - that installs an unrelated empty crate.
-RUN curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash \
-    && (command -v bd || ln -sf /root/.local/bin/bd /usr/local/bin/bd 2>/dev/null || true)
+# Install Go first to build from source if needed
+RUN apt-get update && apt-get install -y --no-install-recommends golang-go && rm -rf /var/lib/apt/lists/* && \
+    curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash && \
+    (command -v bd || ln -sf /root/.local/bin/bd /usr/local/bin/bd 2>/dev/null || true)
 
 # Ensure all tool binaries are on PATH
 ENV PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
@@ -31,7 +34,11 @@ ENV PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
 WORKDIR /workspace
 
 # Verify installations
-RUN cargo --version && cargo-nextest --version && (bd version || echo "bd not in PATH yet")
+RUN echo "=== Verifying installations ===" && \
+    cargo --version && \
+    cargo-nextest --version && \
+    (bd version || echo "Warning: bd not in PATH yet, but continuing...") && \
+    echo "=== All verifications complete ==="
 
 # Default command
 CMD ["bash"]
