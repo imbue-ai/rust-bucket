@@ -1,6 +1,7 @@
 // Template generation and file creation
 
 use crate::config::Config;
+use crate::templates;
 use liquid::ParserBuilder;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -154,6 +155,33 @@ pub fn render(
     }
 
     Ok(generated_files)
+}
+
+/// Check if a target directory contains a rust-bucket.toml marker file
+///
+/// # Arguments
+/// * `target_dir` - Directory to check for the rust-bucket.toml file
+///
+/// # Returns
+/// `true` if rust-bucket.toml exists in the target directory, `false` otherwise
+pub fn has_rust_bucket_toml(target_dir: &Path) -> bool {
+    target_dir.join("rust-bucket.toml").exists()
+}
+
+/// Check for conflicts between managed files and existing files in a target directory
+///
+/// # Arguments
+/// * `target_dir` - Directory to check for conflicting files
+///
+/// # Returns
+/// A vector of paths to files that would conflict with managed files.
+/// Returns an empty vector if no conflicts are found.
+pub fn check_conflicts(target_dir: &Path) -> Vec<PathBuf> {
+    templates::managed_files()
+        .iter()
+        .map(|file| target_dir.join(file))
+        .filter(|path| path.exists())
+        .collect()
 }
 
 #[cfg(test)]
@@ -364,5 +392,77 @@ mod tests {
             GeneratorError::TemplateError(_) => {}
             _ => panic!("Expected TemplateError"),
         }
+    }
+
+    #[test]
+    fn test_has_rust_bucket_toml_exists() {
+        let temp_dir = TempDir::new().unwrap();
+        let toml_path = temp_dir.path().join("rust-bucket.toml");
+
+        // Initially should not exist
+        assert!(!has_rust_bucket_toml(temp_dir.path()));
+
+        // Create the file
+        fs::write(&toml_path, "test_content").unwrap();
+
+        // Now it should exist
+        assert!(has_rust_bucket_toml(temp_dir.path()));
+    }
+
+    #[test]
+    fn test_has_rust_bucket_toml_not_exists() {
+        let temp_dir = TempDir::new().unwrap();
+        assert!(!has_rust_bucket_toml(temp_dir.path()));
+    }
+
+    #[test]
+    fn test_check_conflicts_no_conflicts() {
+        let temp_dir = TempDir::new().unwrap();
+        let conflicts = check_conflicts(temp_dir.path());
+        assert!(conflicts.is_empty());
+    }
+
+    #[test]
+    fn test_check_conflicts_with_conflicts() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create some managed files that would conflict
+        fs::write(temp_dir.path().join("AGENTS.md"), "existing content").unwrap();
+        fs::write(temp_dir.path().join("STYLE_GUIDE.md"), "existing content").unwrap();
+
+        // Create .devcontainer directory and file
+        let devcontainer_dir = temp_dir.path().join(".devcontainer");
+        fs::create_dir(&devcontainer_dir).unwrap();
+        fs::write(devcontainer_dir.join("Dockerfile"), "existing content").unwrap();
+
+        let conflicts = check_conflicts(temp_dir.path());
+
+        // Should detect the conflicts
+        assert!(!conflicts.is_empty());
+        assert_eq!(conflicts.len(), 3);
+
+        // Verify the conflicting files are in the list
+        let conflict_names: Vec<String> = conflicts
+            .iter()
+            .map(|p| p.file_name().unwrap().to_string_lossy().to_string())
+            .collect();
+
+        assert!(conflict_names.contains(&"AGENTS.md".to_string()));
+        assert!(conflict_names.contains(&"STYLE_GUIDE.md".to_string()));
+        assert!(conflict_names.contains(&"Dockerfile".to_string()));
+    }
+
+    #[test]
+    fn test_check_conflicts_partial_conflicts() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create only one managed file
+        fs::write(temp_dir.path().join("WORKFLOW.md"), "existing content").unwrap();
+
+        let conflicts = check_conflicts(temp_dir.path());
+
+        // Should detect exactly one conflict
+        assert_eq!(conflicts.len(), 1);
+        assert!(conflicts[0].ends_with("WORKFLOW.md"));
     }
 }
