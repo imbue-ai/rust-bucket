@@ -261,8 +261,11 @@ edition = "2021"
         let temp_dir = TempDir::new().unwrap();
 
         // Create Cargo.toml but not .git
-        fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"test\"")
-            .unwrap();
+        fs::write(
+            temp_dir.path().join("Cargo.toml"),
+            "[package]\nname = \"test\"",
+        )
+        .unwrap();
 
         let result = apply_init(temp_dir.path(), false);
 
@@ -287,9 +290,11 @@ edition = "2021"
         match result.unwrap_err() {
             ApplyError::ConflictingFiles(conflicts) => {
                 assert!(!conflicts.is_empty());
-                assert!(conflicts
-                    .iter()
-                    .any(|p| p.file_name().unwrap() == "AGENTS.md"));
+                assert!(
+                    conflicts
+                        .iter()
+                        .any(|p| p.file_name().unwrap() == "AGENTS.md")
+                );
             }
             e => panic!("Expected ConflictingFiles error, got: {:?}", e),
         }
