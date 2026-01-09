@@ -1,1 +1,10 @@
-// Placeholder
+{
+  "_generated": "rust-bucket v{{ rust_bucket_version }}",
+  "name": "Rust-Bucket",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+}
