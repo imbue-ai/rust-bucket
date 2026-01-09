@@ -10,6 +10,17 @@ This repo uses Beads. Work is tracked as beads, executed one-at-a-time, in prior
 - **Retry limit**: max 4 attempts per bead, then escalate for human input.
 - **Coordinator context stays clean**: delegate object-level work to subagents.
 
+## Coordinator workflow rules
+- **Coordinator does NOT do coding work itself** - it only orchestrates subagents.
+- **Coordinator delegates object-level work to ONE Coding Subagent at a time.**
+- **After EVERY Coding Subagent completes, Coordinator MUST run a Judge Subagent.**
+- **Judge verifies both correctness AND style guide compliance.**
+- **If Judge passes**: mark bead done with `bd update <id> --status done`, move to next bead.
+- **If Judge fails**:
+  - Run `git reset --hard` to revert to pre-attempt commit.
+  - Retry with a fresh Coding Subagent (max 4 attempts total).
+  - After 4 failed attempts, escalate for human input.
+
 ## Operational notes
 - Bead list is stored in `.beads/issues.jsonl`
 - Update bead status with: `bd update <id> --status done`
@@ -31,23 +42,23 @@ digraph CoordinatorWorkflow {
   START [shape=ellipse, style=filled, fillcolor=lightgreen];
   READ_DOCS [label="Read repo docs\n(README, ARCHITECTURE, STYLE_GUIDE,\nWORKFLOW, TESTING)"];
   PICK_BEAD [label="Select next open bead\n(P0 → P3, one at a time)"];
-  DELEGATE [label="Delegate to one worker subagent"];
-  OK [shape=diamond, style=filled, fillcolor=lightyellow, label="Success?"];
+  DELEGATE [label="Delegate to ONE Coding Subagent"];
+  JUDGE [label="Run Judge Subagent\n(verify correctness + style compliance)"];
+  JUDGE_RESULT [shape=diamond, style=filled, fillcolor=lightyellow, label="Judge passes?"];
   MARK_DONE [label="bd update <id> --status done"];
   MORE [shape=diamond, style=filled, fillcolor=lightyellow, label="More beads?"];
   END [shape=ellipse, style=filled, fillcolor=lightgreen];
 
   RETRIES [shape=diamond, style=filled, fillcolor=lightyellow, label="Retries < 4?"];
-  RESET [label="git reset --hard\n(pre-attempt commit)"];
-  JUDGE [label="Run Judge subagent\n(analyze failure mode)"];
-  REPROMPT [label="Reprompt a fresh worker\n(avoid failure mode)"];
+  RESET [label="git reset --hard\n(revert to pre-attempt commit)"];
+  REPROMPT [label="Retry with fresh Coding Subagent\n(avoid previous failure mode)"];
   ESCALATE [shape=box, style=filled, fillcolor=lightcoral, label="Escalate for human input"];
 
-  START -> READ_DOCS -> PICK_BEAD -> DELEGATE -> OK;
-  OK -> MARK_DONE [label="yes"];
-  OK -> RETRIES [label="no"];
+  START -> READ_DOCS -> PICK_BEAD -> DELEGATE -> JUDGE -> JUDGE_RESULT;
+  JUDGE_RESULT -> MARK_DONE [label="pass"];
+  JUDGE_RESULT -> RETRIES [label="fail"];
   RETRIES -> RESET [label="yes"];
-  RESET -> JUDGE -> REPROMPT -> DELEGATE;
+  RESET -> REPROMPT -> DELEGATE;
   RETRIES -> ESCALATE [label="no"];
   MARK_DONE -> MORE;
   MORE -> PICK_BEAD [label="yes"];
