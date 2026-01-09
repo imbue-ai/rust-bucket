@@ -40,7 +40,7 @@ digraph CoordinatorWorkflow {
   node [shape=box, style=rounded];
 
   START [shape=ellipse, style=filled, fillcolor=lightgreen];
-  READ_DOCS [label="Read repo docs\n(README, ARCHITECTURE, STYLE_GUIDE,\nWORKFLOW, TESTING)"];
+  READ_DOCS [label="Read repo docs\n(README, AGENTS, ARCHITECTURE,\nSTYLE_GUIDE, WORKFLOW, TESTING)"];
   PICK_BEAD [label="Select next open bead\n(P0 → P3, one at a time)"];
   DELEGATE [label="Delegate to ONE Coding Subagent"];
   JUDGE [label="Run Judge Subagent\n(verify correctness + style compliance)"];
