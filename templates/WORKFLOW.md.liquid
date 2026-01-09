@@ -24,6 +24,7 @@ This repo uses Beads. Work is tracked as beads, executed one-at-a-time, in prior
 ## Operational notes
 - Bead list is stored in `.beads/issues.jsonl`
 - Update bead status with: `bd update <id> --status done`
+- When creating, updating, or closing beads, commit the changes to `.beads/issues.jsonl` to ensure bead state is tracked in version control.
 - If a subagent fails:
   - hard reset to pre-attempt commit: `git reset --hard <good_commit>`
   - run a Judge subagent to analyze the failure mode
