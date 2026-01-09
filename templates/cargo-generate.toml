@@ -1,0 +1,6 @@
+[template]
+cargo_generate_version = ">=0.18.0"
+
+[placeholders]
+test_timeout = { type = "string", prompt = "Test timeout in seconds", default = "120" }
+rust_bucket_version = { type = "string", prompt = "rust-bucket version" }
