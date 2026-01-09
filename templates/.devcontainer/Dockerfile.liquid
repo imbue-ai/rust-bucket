@@ -2,6 +2,9 @@
 
 FROM rust:1.84-bookworm
 
+# Cache buster - increment to force rebuild: v2
+ARG CACHE_BUST=2
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
@@ -16,14 +19,19 @@ RUN curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C /usr/local/bin
 
 # Install Beads task tracker (required per AGENTS.md and WORKFLOW.md)
 # bd must be available on PATH
-# Beads is a Go project - install via shell script
-RUN curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash
+# NOTE: Beads is a Go project, NOT a Rust crate. Install via official shell script.
+# Do NOT use "cargo install beads" - that installs an unrelated empty crate.
+RUN curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash \
+    && (command -v bd || ln -sf /root/.local/bin/bd /usr/local/bin/bd 2>/dev/null || true)
 
-# Ensure cargo bin is on PATH for installed tools
-ENV PATH="/root/.cargo/bin:${PATH}"
+# Ensure all tool binaries are on PATH
+ENV PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
 
 # Set working directory
 WORKDIR /workspace
+
+# Verify installations
+RUN cargo --version && cargo-nextest --version && (bd version || echo "bd not in PATH yet")
 
 # Default command
 CMD ["bash"]
