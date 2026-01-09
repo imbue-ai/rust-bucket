@@ -16,7 +16,8 @@ RUN curl -LsSf https://get.nexte.st/latest/linux | tar zxf - -C /usr/local/bin
 
 # Install Beads task tracker (required per AGENTS.md and WORKFLOW.md)
 # bd must be available on PATH
-RUN cargo install beads --locked
+# Beads is a Go project - install via shell script
+RUN curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash
 
 # Ensure cargo bin is on PATH for installed tools
 ENV PATH="/root/.cargo/bin:${PATH}"
