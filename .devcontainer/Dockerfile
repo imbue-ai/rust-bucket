@@ -22,13 +22,13 @@ RUN cargo install cargo-nextest --locked
 # bd must be available on PATH
 # NOTE: Beads is a Go project, NOT a Rust crate. Install via official shell script.
 # Do NOT use "cargo install beads" - that installs an unrelated empty crate.
-# Install Go first to build from source if needed
+# Install Go first, then build beads from source at specific version
 RUN apt-get update && apt-get install -y --no-install-recommends golang-go && rm -rf /var/lib/apt/lists/* && \
-    curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash && \
-    (command -v bd || ln -sf /root/.local/bin/bd /usr/local/bin/bd 2>/dev/null || true)
+    go install github.com/steveyegge/beads/cmd/bd@v0.46.0 && \
+    (command -v bd || ln -sf /root/go/bin/bd /usr/local/bin/bd 2>/dev/null || true)
 
 # Ensure all tool binaries are on PATH
-ENV PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
+ENV PATH="/root/go/bin:/root/.local/bin:/root/.cargo/bin:${PATH}"
 
 # Set working directory
 WORKDIR /workspace
