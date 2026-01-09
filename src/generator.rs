@@ -323,12 +323,7 @@ mod tests {
         let nonexistent_dir = PathBuf::from("/nonexistent/template/dir");
 
         let config = create_test_config();
-        let result = render(
-            &nonexistent_dir,
-            temp_output_dir.path(),
-            &config,
-            false,
-        );
+        let result = render(&nonexistent_dir, temp_output_dir.path(), &config, false);
 
         assert!(result.is_err());
         match result.unwrap_err() {
