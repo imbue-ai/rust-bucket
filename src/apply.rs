@@ -135,6 +135,88 @@ pub fn apply_init(target_dir: &Path, force: bool) -> Result<ApplyResult, ApplyEr
     })
 }
 
+/// Apply rust-bucket to a target directory in update mode (subsequent runs).
+///
+/// This function implements the subsequent-times flow as specified in ARCHITECTURE.md:
+/// 1. Assert Cargo.toml exists (this is a Rust crate)
+/// 2. Assert .git/ exists (git init was done)
+/// 3. Load rust-bucket.toml using Config::load()
+/// 4. Validate config (log/warn if version is different)
+/// 5. Pre-populate choices from config (test_timeout already set)
+/// 6. Prompt for any NEW choices not in config (none in v1, so skip)
+/// 7. Update config's rust_bucket_version to current version
+/// 8. Write updated rust-bucket.toml using config.save()
+/// 9. Extract templates to temp dir using templates::extract_to_temp()
+/// 10. Render templates to target dir using generator::render() with overwrite=true
+/// 11. Run verification using verify::run_all()
+/// 12. Return result
+///
+/// # Arguments
+///
+/// * `target_dir` - The target directory to update rust-bucket files in
+///
+/// # Errors
+///
+/// Returns `ApplyError` if:
+/// - The target is not a Rust crate (no Cargo.toml)
+/// - The target is not a git repository (no .git/)
+/// - The rust-bucket.toml config file cannot be loaded
+/// - Any step in the process fails (config save, template extraction, rendering, verification)
+pub fn apply_update(target_dir: &Path) -> Result<ApplyResult, ApplyError> {
+    // Step 1: Assert Cargo.toml exists
+    let cargo_toml = target_dir.join("Cargo.toml");
+    if !cargo_toml.exists() {
+        return Err(ApplyError::NotRustCrate);
+    }
+
+    // Step 2: Assert .git/ exists
+    let git_dir = target_dir.join(".git");
+    if !git_dir.exists() {
+        return Err(ApplyError::NotGitRepo);
+    }
+
+    // Step 3: Load rust-bucket.toml
+    let config_path = target_dir.join("rust-bucket.toml");
+    let mut config = Config::load(&config_path)?;
+
+    // Step 4: Validate config - warn if version is different
+    let current_version = env!("CARGO_PKG_VERSION");
+    if config.rust_bucket_version != current_version {
+        eprintln!(
+            "Note: Config was last generated with rust-bucket v{}, updating to v{}",
+            config.rust_bucket_version, current_version
+        );
+    }
+
+    // Step 5: Pre-populate choices from config (test_timeout is already set)
+    // The config already contains test_timeout from previous run
+
+    // Step 6: Prompt for any NEW choices not in config
+    // In v1, there are no new choices to prompt for, so we skip this step
+
+    // Step 7: Update config's rust_bucket_version to current version
+    config.rust_bucket_version = current_version.to_string();
+
+    // Step 8: Write updated rust-bucket.toml
+    config.save(&config_path)?;
+
+    // Step 9: Extract templates to temp dir
+    let (_temp_dir, temp_path) = templates::extract_to_temp()?;
+
+    // Step 10: Render templates to target dir with overwrite=true
+    // Note: The update flow is simpler than init - no conflict checking needed since overwrite=true
+    let files_generated = generator::render(&temp_path, target_dir, &config, true)?;
+
+    // Step 11: Run verification
+    let verification = verify::run_all(target_dir)?;
+
+    // Step 12: Return result
+    Ok(ApplyResult {
+        files_generated,
+        verification,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
