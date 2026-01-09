@@ -42,9 +42,8 @@ pub fn extract_to_temp() -> Result<(TempDir, PathBuf), TemplateError> {
     let temp_path = temp_dir.path().to_path_buf();
 
     for file_path in Templates::iter() {
-        let file_data = Templates::get(&file_path).ok_or_else(|| {
-            TemplateError::TemplateNotFound(file_path.to_string())
-        })?;
+        let file_data = Templates::get(&file_path)
+            .ok_or_else(|| TemplateError::TemplateNotFound(file_path.to_string()))?;
 
         let target_path = temp_path.join(file_path.as_ref());
 
@@ -94,7 +93,11 @@ mod tests {
     #[test]
     fn test_extract_to_temp() {
         let result = extract_to_temp();
-        assert!(result.is_ok(), "Failed to extract templates: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Failed to extract templates: {:?}",
+            result.err()
+        );
 
         let (_temp_dir, temp_path) = result.unwrap();
         assert!(temp_path.exists());
