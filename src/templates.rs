@@ -74,6 +74,7 @@ pub fn extract_to_temp() -> Result<(TempDir, PathBuf), TemplateError> {
 pub fn managed_files() -> Vec<&'static str> {
     vec![
         "AGENTS.md",
+        "CLAUDE.md",
         "STYLE_GUIDE.md",
         "WORKFLOW.md",
         "TESTING.md",
@@ -108,7 +109,7 @@ mod tests {
     fn test_managed_files_not_empty() {
         let files = managed_files();
         assert!(!files.is_empty());
-        assert_eq!(files.len(), 10);
+        assert_eq!(files.len(), 11);
     }
 
     #[test]

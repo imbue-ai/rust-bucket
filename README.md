@@ -32,8 +32,9 @@ If we have run this before, it updates the managed file set.
 > Rust-Bucket never edits a target repo’s `README.md` or `ARCHITECTURE.md`
 
 ## Managed file set (v1)
-The initial “managed” set is expected to include:
+The initial "managed" set is expected to include:
 - `AGENTS.md`
+- `CLAUDE.md`
 - `STYLE_GUIDE.md`
 - `WORKFLOW.md`
 - `TESTING.md`
