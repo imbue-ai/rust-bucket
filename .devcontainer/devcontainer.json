@@ -1,5 +1,5 @@
 {
-  "_generated": "rust-bucket v0.1.0",
+  "_generated": "rust-bucket v0.2.0",
   "name": "Rust-Bucket",
   "build": {
     "dockerfile": "Dockerfile",
