@@ -14,7 +14,7 @@ This repo is designed for long-horizon, agentic coding. Follow these rules stric
 - If the user expresses frustration, or other needs for emotional support or validation, please direct them to use another LLM agent instance, and focus on task adherence and complexity.
 
 ## Hard requirements
-- You must read **README.md**, **STYLE_GUIDE.md**, and **WORKFLOW.md** before making changes.
+- You must read **README.md**, **DESIGN.md**, **ARCHITECTURE.md**, **STYLE_GUIDE.md**, and **WORKFLOW.md** before making changes.
 - Do not perform drive-by refactors (renames, formatting sweeps, dependency upgrades) unless explicitly required.
 - If requirements are underspecified: make the smallest reasonable assumption and document it in the PR/summary.
 - Keep diffs small and readable. Avoid unrelated whitespace changes.
