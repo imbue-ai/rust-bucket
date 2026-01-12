@@ -39,6 +39,7 @@ fn create_test_config() -> rust_bucket::config::Config {
     rust_bucket::config::Config {
         rust_bucket_version: env!("CARGO_PKG_VERSION").to_string(),
         test_timeout: 120,
+        project_name: "test-project".to_string(),
     }
 }
 

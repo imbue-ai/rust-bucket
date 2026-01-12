@@ -69,6 +69,7 @@ pub fn render(
     let globals = liquid::object!({
         "rust_bucket_version": config.rust_bucket_version,
         "test_timeout": config.test_timeout,
+        "project_name": config.project_name,
     });
 
     // Track all files that will be generated
@@ -193,6 +194,7 @@ mod tests {
         Config {
             rust_bucket_version: "0.1.0".to_string(),
             test_timeout: 120,
+            project_name: "test-project".to_string(),
         }
     }
 

@@ -112,6 +112,7 @@ pub fn apply_init(target_dir: &Path, force: bool) -> Result<ApplyResult, ApplyEr
     let config = Config {
         rust_bucket_version: env!("CARGO_PKG_VERSION").to_string(),
         test_timeout,
+        project_name: "Rust-Bucket".to_string(),
     };
 
     // Step 6: Write rust-bucket.toml

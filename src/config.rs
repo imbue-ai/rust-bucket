@@ -28,6 +28,8 @@ pub struct Config {
     pub rust_bucket_version: String,
     /// Test timeout in seconds (default: 120)
     pub test_timeout: u32,
+    /// Name of the project
+    pub project_name: String,
 }
 
 impl Default for Config {
@@ -35,6 +37,7 @@ impl Default for Config {
         Self {
             rust_bucket_version: env!("CARGO_PKG_VERSION").to_string(),
             test_timeout: 120,
+            project_name: env!("CARGO_PKG_NAME").to_string(),
         }
     }
 }
@@ -71,6 +74,7 @@ mod tests {
         let config = Config::default();
         assert_eq!(config.rust_bucket_version, env!("CARGO_PKG_VERSION"));
         assert_eq!(config.test_timeout, 120);
+        assert_eq!(config.project_name, env!("CARGO_PKG_NAME"));
     }
 
     #[test]
@@ -82,6 +86,7 @@ mod tests {
         let original_config = Config {
             rust_bucket_version: "0.1.0".to_string(),
             test_timeout: 300,
+            project_name: "test-project".to_string(),
         };
 
         // Save the config
@@ -98,6 +103,7 @@ mod tests {
         // Verify the values match
         assert_eq!(loaded_config.rust_bucket_version, "0.1.0");
         assert_eq!(loaded_config.test_timeout, 300);
+        assert_eq!(loaded_config.project_name, "test-project");
     }
 
     #[test]
