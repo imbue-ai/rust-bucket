@@ -20,6 +20,11 @@ This repo is designed for long-horizon, agentic coding. Follow these rules stric
 - Keep diffs small and readable. Avoid unrelated whitespace changes.
 - Use atomic commits that typecheck and pass all checks.
 
+## Commit Policy
+- Before making a commit, commit to a plan first.
+- All changes to the codebase must use atomic commits which are logically indepenednt
+- Ensure a clean repository state before returning to the user.
+
 ## Beads is mandatory
 This repo uses Beads for task tracking: https://github.com/steveyegge/beads
 

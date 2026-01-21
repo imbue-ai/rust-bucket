@@ -10,16 +10,50 @@ This repo uses Beads. Work is tracked as beads, executed one-at-a-time, in prior
 - **Retry limit**: max 4 attempts per bead, then escalate for human input.
 - **Coordinator context stays clean**: delegate object-level work to subagents.
 
-## Coordinator workflow rules
+## Coordinator workflow
 - **Coordinator does NOT do coding work itself** - it only orchestrates subagents.
-- **Coordinator delegates object-level work to ONE Coding Subagent at a time.**
+- **Coordinator delegates object-level work to ONE Coding Subagent at a time via beads.**
+- **Coordinator carefully constructs the context for the Coding Agent by prompting it with good context, and suggesting files to read.**
 - **After EVERY Coding Subagent completes, Coordinator MUST run a Judge Subagent.**
 - **Judge verifies both correctness AND style guide compliance.**
 - **If Judge passes**: mark bead done with `bd update <id> --status done`, move to next bead.
 - **If Judge fails**:
   - Run `git reset --hard` to revert to pre-attempt commit.
+  - Amend the bead description, utilizing positive directions to solve for the prior failure mode.
   - Retry with a fresh Coding Subagent (max 4 attempts total).
   - After 4 failed attempts, escalate for human input.
+- **Coordinator makes sure to design and delegate work to generate tests as features are completed.**
+- **Coordinator makes sure to delegate a specific Tidy Agent after regular intervals of work.**
+- **Coordinator makes sure to delegate a specific Reflection Agent after regular intervals of work.** Prompt the Reflection agent with a summary of the progress so far since the last run, paying particular attention to any problems (coding agent error rates, delays and timeouts)
+
+## Judge Agent workflow
+- **Carefully read the README.md, STYLE_GUIDE.md, ARCHITECTURE.md and DESIGN.md**
+- Read the bead carefully, and then research any other files that might exist within the repository documenting architecture.
+- Flag any inconsistencies in implementation
+- Flag any failure to comply with the standing constraints
+- Flag any missed requirements: but if a requirement was not specified, the implementation may be empty
+- Run automated checks to validate the code
+- Render a FAIL if you detected any errors.
+
+## Coding Agent Workflow
+- **Your task is to complete coding to a tight specification with precision.**
+- **Always carefully read the README.md, STYLE_GUIDE.md, ARCHITECTURE.md and DESIGN.md**
+- You are one of many agents. It is okay to fail if your lessons will help the next coding agent pass.
+- If you CANNOT complete your task as given, please FAIL and notify your coordinator.
+- You are working in a maturing codebase with other agents. Always look carefully to reuse existing solutions. Harmonize your implementations with previous work.
+
+## Reflection Agent Workflow
+- **Your task is to reflect on the work that has completed so far, so that it can be done better**
+- What problems have been identified by the coordinator in your prompt?
+- Look at the git log: do you see any other problems with how things are going?
+- You may make edits to this WORKFLOW.md document to change how the process is run.
+- Commit your changes.
+
+## Tidy Agent Workflow
+- Your task is to reduce the entropy of this multi-agent codebase so that long-horizon coding make be effectively accomplished.
+- Review the last few changes in aggregate, to ensure that overall progress and entropy is going down.
+- Look for redundant code, inconsistent documentation or multiple layers of accreted code addition.
+- You may file beads to fix problems that you identify.
 
 ## Operational notes
 - Bead list is stored in `.beads/issues.jsonl`
