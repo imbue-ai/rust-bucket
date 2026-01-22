@@ -251,10 +251,10 @@ edition = "2021"
         let result = apply_init(temp_dir.path(), false);
 
         assert!(result.is_err());
-        match result.unwrap_err() {
-            ApplyError::NotRustCrate => {}
-            e => panic!("Expected NotRustCrate error, got: {:?}", e),
-        }
+        assert!(
+            matches!(result.unwrap_err(), ApplyError::NotRustCrate),
+            "Expected NotRustCrate error"
+        );
     }
 
     #[test]
@@ -271,10 +271,10 @@ edition = "2021"
         let result = apply_init(temp_dir.path(), false);
 
         assert!(result.is_err());
-        match result.unwrap_err() {
-            ApplyError::NotGitRepo => {}
-            e => panic!("Expected NotGitRepo error, got: {:?}", e),
-        }
+        assert!(
+            matches!(result.unwrap_err(), ApplyError::NotGitRepo),
+            "Expected NotGitRepo error"
+        );
     }
 
     #[test]
@@ -288,16 +288,18 @@ edition = "2021"
         let result = apply_init(temp_dir.path(), false);
 
         assert!(result.is_err());
-        match result.unwrap_err() {
-            ApplyError::ConflictingFiles(conflicts) => {
-                assert!(!conflicts.is_empty());
-                assert!(
-                    conflicts
-                        .iter()
-                        .any(|p| p.file_name().unwrap() == "AGENTS.md")
-                );
-            }
-            e => panic!("Expected ConflictingFiles error, got: {:?}", e),
+        let err = result.unwrap_err();
+        assert!(
+            matches!(&err, ApplyError::ConflictingFiles(_)),
+            "Expected ConflictingFiles error"
+        );
+        if let ApplyError::ConflictingFiles(conflicts) = err {
+            assert!(!conflicts.is_empty());
+            assert!(
+                conflicts
+                    .iter()
+                    .any(|p| p.file_name().unwrap() == "AGENTS.md")
+            );
         }
     }
 }
