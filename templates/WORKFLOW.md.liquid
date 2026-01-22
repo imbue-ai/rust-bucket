@@ -39,8 +39,8 @@ On startup, read these files in order:
   - Retry with a fresh Coding Subagent (max 4 attempts total).
   - After 4 failed attempts, escalate for human input.
 - **Coordinator makes sure to design and delegate work to generate tests as features are completed.**
-- **Coordinator makes sure to delegate a specific Tidy Agent after regular intervals of work.**
-- **Coordinator makes sure to delegate a specific Reflection Agent after regular intervals of work.** Prompt the Reflection agent with a summary of the progress so far since the last run, paying particular attention to any problems (coding agent error rates, delays and timeouts)
+- **Coordinator makes sure to delegate a specific Tidy Agent after every 2 to 3 coding agent tasks.** Beads created by the Tidy agent must be completed at the priority they are filed.
+- **Coordinator makes sure to delegate a specific Reflection Agent after every 6 to 8 coding agent tasks.** Prompt the Reflection agent with a summary of the progress so far since the last run, paying particular attention to any problems (coding agent error rates, flaky tests, delays and timeouts). Beads created by the Reflection agent must be filed at P1 priority, and completed before any regular coding work.
 
 ## Subagent delegation
 
@@ -62,8 +62,12 @@ When delegating to a subagent, prompt them to read their workflow file:
   - run a Judge subagent to analyze the failure mode
   - retry with a fresh worker prompt that avoids the failure mode
 - Success criteria:
-  - tests pass
-  - run a Judge subagent to verify that the bead success is accurate, and no style guides were violated.
+  - run a Judge subagent to verify that the bead success is accurate, and no style guides were violated. The judge will run tests.
+  - You MUST respect the result of the JUDGE agent. Instead of overruling the JUDGE, you may generate and delegate a bead prior to this one, to prepare the success of your eventual goal.
+  - If any tests present as flaky, you are to attempt to delegate a bead to fix them first, before continuing your work.
+
+
+
 
 ## Graphviz workflow (Coordinator)
 
