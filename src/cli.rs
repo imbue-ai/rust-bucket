@@ -5,16 +5,17 @@ use std::io::{self, BufRead, Write};
 use thiserror::Error;
 
 /// Rust-first project bootstrapper for AI-first engineering
-#[derive(Parser)]
+#[derive(Debug, Parser)]
 #[command(name = "rust-bucket")]
 #[command(about = "Rust-first project bootstrapper for AI-first engineering")]
+#[command(version)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
 }
 
 /// Available subcommands
-#[derive(Subcommand)]
+#[derive(Debug, Subcommand)]
 pub enum Commands {
     /// Apply rust-bucket to the current directory
     Apply {
@@ -95,5 +96,16 @@ mod tests {
         match cli.command {
             Commands::Apply { force } => assert!(force),
         }
+    }
+
+    #[test]
+    fn test_version_flag() {
+        // Test that --version flag is recognized (clap will exit with code 0)
+        let result = Cli::try_parse_from(["rust-bucket", "--version"]);
+        // --version causes clap to print version and exit, which returns an error
+        // of kind DisplayVersion
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), clap::error::ErrorKind::DisplayVersion);
     }
 }

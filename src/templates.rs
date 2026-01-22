@@ -77,6 +77,10 @@ pub fn managed_files() -> Vec<&'static str> {
         "CLAUDE.md",
         "STYLE_GUIDE.md",
         "WORKFLOW.md",
+        "WORKFLOW_CODING.md",
+        "WORKFLOW_JUDGE.md",
+        "WORKFLOW_TIDY.md",
+        "WORKFLOW_REFLECTION.md",
         "TESTING.md",
         ".config/nextest.toml",
         "deny.toml",
@@ -109,7 +113,7 @@ mod tests {
     fn test_managed_files_not_empty() {
         let files = managed_files();
         assert!(!files.is_empty());
-        assert_eq!(files.len(), 11);
+        assert_eq!(files.len(), 15);
     }
 
     #[test]

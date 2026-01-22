@@ -4,6 +4,15 @@
 
 This repo uses Beads. Work is tracked as beads, executed one-at-a-time, in priority order.
 
+## Startup checklist
+On startup, read these files in order:
+1. **README.md** - Project overview
+2. **AGENTS.md** - Agent roles and conduct
+3. **ARCHITECTURE.md** - System design
+4. **STYLE_GUIDE.md** - Coding standards
+5. **WORKFLOW.md** - This file (coordination process)
+6. **TESTING.md** - Test requirements
+
 ## Key constraints
 - **Sequential only**: one bead at a time, one subagent at a time.
 - **Small commits**: each commit should typecheck and pass checks.
@@ -26,34 +35,16 @@ This repo uses Beads. Work is tracked as beads, executed one-at-a-time, in prior
 - **Coordinator makes sure to delegate a specific Tidy Agent after regular intervals of work.**
 - **Coordinator makes sure to delegate a specific Reflection Agent after regular intervals of work.** Prompt the Reflection agent with a summary of the progress so far since the last run, paying particular attention to any problems (coding agent error rates, delays and timeouts)
 
-## Judge Agent workflow
-- **Carefully read the README.md, STYLE_GUIDE.md, ARCHITECTURE.md and DESIGN.md**
-- Read the bead carefully, and then research any other files that might exist within the repository documenting architecture.
-- Flag any inconsistencies in implementation
-- Flag any failure to comply with the standing constraints
-- Flag any missed requirements: but if a requirement was not specified, the implementation may be empty
-- Run automated checks to validate the code
-- Render a FAIL if you detected any errors.
+## Subagent delegation
 
-## Coding Agent Workflow
-- **Your task is to complete coding to a tight specification with precision.**
-- **Always carefully read the README.md, STYLE_GUIDE.md, ARCHITECTURE.md and DESIGN.md**
-- You are one of many agents. It is okay to fail if your lessons will help the next coding agent pass.
-- If you CANNOT complete your task as given, please FAIL and notify your coordinator.
-- You are working in a maturing codebase with other agents. Always look carefully to reuse existing solutions. Harmonize your implementations with previous work.
+When delegating to a subagent, prompt them to read their workflow file:
 
-## Reflection Agent Workflow
-- **Your task is to reflect on the work that has completed so far, so that it can be done better**
-- What problems have been identified by the coordinator in your prompt?
-- Look at the git log: do you see any other problems with how things are going?
-- You may make edits to this WORKFLOW.md document to change how the process is run.
-- Commit your changes.
-
-## Tidy Agent Workflow
-- Your task is to reduce the entropy of this multi-agent codebase so that long-horizon coding make be effectively accomplished.
-- Review the last few changes in aggregate, to ensure that overall progress and entropy is going down.
-- Look for redundant code, inconsistent documentation or multiple layers of accreted code addition.
-- You may file beads to fix problems that you identify.
+| Agent Type | Workflow File | Purpose |
+|------------|---------------|---------|
+| Coding Subagent | `WORKFLOW_CODING.md` | Implement narrowly-scoped tasks |
+| Judge Subagent | `WORKFLOW_JUDGE.md` | Review changes for correctness and style |
+| Tidy Agent | `WORKFLOW_TIDY.md` | Reduce codebase entropy |
+| Reflection Agent | `WORKFLOW_REFLECTION.md` | Analyze and improve the process |
 
 ## Operational notes
 - Bead list is stored in `.beads/issues.jsonl`
@@ -67,7 +58,7 @@ This repo uses Beads. Work is tracked as beads, executed one-at-a-time, in prior
   - tests pass
   - run a Judge subagent to verify that the bead success is accurate, and no style guides were violated.
 
-## Graphviz workflow
+## Graphviz workflow (Coordinator)
 
 ```dot
 digraph CoordinatorWorkflow {
@@ -77,25 +68,33 @@ digraph CoordinatorWorkflow {
   START [shape=ellipse, style=filled, fillcolor=lightgreen];
   READ_DOCS [label="Read repo docs\n(README, AGENTS, ARCHITECTURE,\nSTYLE_GUIDE, WORKFLOW, TESTING)"];
   PICK_BEAD [label="Select next open bead\n(P0 → P3, one at a time)"];
-  DELEGATE [label="Delegate to ONE Coding Subagent"];
-  JUDGE [label="Run Judge Subagent\n(verify correctness + style compliance)"];
+  DELEGATE [label="Delegate to ONE Coding Subagent\n(prompt: read WORKFLOW_CODING.md)"];
+  JUDGE [label="Run Judge Subagent\n(prompt: read WORKFLOW_JUDGE.md)"];
   JUDGE_RESULT [shape=diamond, style=filled, fillcolor=lightyellow, label="Judge passes?"];
-  MARK_DONE [label="bd update <id> --status done"];
+  MARK_DONE [label="bd update <id> --status done\n+ commit bead state"];
   MORE [shape=diamond, style=filled, fillcolor=lightyellow, label="More beads?"];
   END [shape=ellipse, style=filled, fillcolor=lightgreen];
 
   RETRIES [shape=diamond, style=filled, fillcolor=lightyellow, label="Retries < 4?"];
   RESET [label="git reset --hard\n(revert to pre-attempt commit)"];
-  REPROMPT [label="Retry with fresh Coding Subagent\n(avoid previous failure mode)"];
+  JUDGE_FAILURE [label="Run Judge Subagent\n(analyze failure mode)"];
+  REPROMPT [label="Retry with fresh Coding Subagent\n(amend bead, avoid failure mode)"];
   ESCALATE [shape=box, style=filled, fillcolor=lightcoral, label="Escalate for human input"];
+
+  INTERVAL_CHECK [shape=diamond, style=filled, fillcolor=lightblue, label="Regular interval?"];
+  TIDY [label="Delegate Tidy Agent\n(prompt: read WORKFLOW_TIDY.md)"];
+  REFLECTION [label="Delegate Reflection Agent\n(prompt: read WORKFLOW_REFLECTION.md)"];
 
   START -> READ_DOCS -> PICK_BEAD -> DELEGATE -> JUDGE -> JUDGE_RESULT;
   JUDGE_RESULT -> MARK_DONE [label="pass"];
   JUDGE_RESULT -> RETRIES [label="fail"];
   RETRIES -> RESET [label="yes"];
-  RESET -> REPROMPT -> DELEGATE;
+  RESET -> JUDGE_FAILURE -> REPROMPT -> DELEGATE;
   RETRIES -> ESCALATE [label="no"];
-  MARK_DONE -> MORE;
+  MARK_DONE -> INTERVAL_CHECK;
+  INTERVAL_CHECK -> TIDY [label="yes"];
+  TIDY -> REFLECTION -> MORE;
+  INTERVAL_CHECK -> MORE [label="no"];
   MORE -> PICK_BEAD [label="yes"];
   MORE -> END [label="no"];
 }
