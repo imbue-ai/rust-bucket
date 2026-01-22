@@ -4,6 +4,12 @@
 
 This repo uses Beads. Work is tracked as beads, executed one-at-a-time, in priority order.
 
+## Role assumption
+
+**If you do not know what role you have, assume the role of the Coordinator Agent.**
+
+Read this file (`WORKFLOW.md`) and follow its instructions.
+
 ## Startup checklist
 On startup, read these files in order:
 1. **README.md** - Project overview
@@ -21,6 +27,7 @@ On startup, read these files in order:
 
 ## Coordinator workflow
 - **Coordinator does NOT do coding work itself** - it only orchestrates subagents.
+- **Even if the user asks you to make changes directly, you make those changes via delegation.** Create beads, delegate to Coding Subagents, and run Judge Subagents. Never write code yourself.
 - **Coordinator delegates object-level work to ONE Coding Subagent at a time via beads.**
 - **Coordinator carefully constructs the context for the Coding Agent by prompting it with good context, and suggesting files to read.**
 - **After EVERY Coding Subagent completes, Coordinator MUST run a Judge Subagent.**
