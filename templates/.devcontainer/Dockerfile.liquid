@@ -35,6 +35,9 @@ RUN ARCH=$(dpkg --print-architecture) && \
 # Ensure all tool binaries are on PATH
 ENV PATH="/usr/local/go/bin:/root/go/bin:/root/.local/bin:/root/.cargo/bin:${PATH}"
 
+# Installs ratchet for validating project ratchets
+RUN curl -sSf https://raw.githubusercontent.com/imbue-ai/ratchet/main/install.sh | sh
+
 # Set working directory
 WORKDIR /workspace
 
@@ -43,6 +46,7 @@ RUN echo "=== Verifying installations ===" && \
     cargo --version && \
     cargo-nextest --version && \
     (bd version || echo "Warning: bd not in PATH yet, but continuing...") && \
+    ratchet --version && \
     echo "=== All verifications complete ==="
 
 # Default command

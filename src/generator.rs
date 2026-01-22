@@ -281,12 +281,14 @@ mod tests {
         );
 
         assert!(result.is_err());
-        match result.unwrap_err() {
-            GeneratorError::ConflictError(conflicts) => {
-                assert_eq!(conflicts.len(), 1);
-                assert!(conflicts[0].ends_with("test.txt"));
-            }
-            _ => panic!("Expected ConflictError"),
+        let err = result.unwrap_err();
+        assert!(
+            matches!(&err, GeneratorError::ConflictError(_)),
+            "Expected ConflictError"
+        );
+        if let GeneratorError::ConflictError(conflicts) = err {
+            assert_eq!(conflicts.len(), 1);
+            assert!(conflicts[0].ends_with("test.txt"));
         }
     }
 
@@ -328,10 +330,13 @@ mod tests {
         let result = render(&nonexistent_dir, temp_output_dir.path(), &config, false);
 
         assert!(result.is_err());
-        match result.unwrap_err() {
-            GeneratorError::TemplateDirectoryError(_) => {}
-            _ => panic!("Expected TemplateDirectoryError"),
-        }
+        assert!(
+            matches!(
+                result.unwrap_err(),
+                GeneratorError::TemplateDirectoryError(_)
+            ),
+            "Expected TemplateDirectoryError"
+        );
     }
 
     #[test]
@@ -385,10 +390,10 @@ mod tests {
         );
 
         assert!(result.is_err());
-        match result.unwrap_err() {
-            GeneratorError::TemplateError(_) => {}
-            _ => panic!("Expected TemplateError"),
-        }
+        assert!(
+            matches!(result.unwrap_err(), GeneratorError::TemplateError(_)),
+            "Expected TemplateError"
+        );
     }
 
     #[test]
