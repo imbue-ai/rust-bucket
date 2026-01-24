@@ -5,11 +5,13 @@
 This repo is designed for long-horizon, agentic coding. Follow these rules strictly.
 
 ## Agent roles
-- **Coordinator Agent**: owns the bead queue and orchestration. Must follow `WORKFLOW.md`.
-- **Coding Subagent**: implements narrowly-scoped tasks with minimal diffs.
-- **Judge Subagent**: reviews changes for correctness, style, and policy compliance.
+- **Coordinator Agent**: owns the bead queue and orchestration. Defined in `.claude/agents/coordinator.md`.
+- **Coding Subagent**: implements narrowly-scoped tasks with minimal diffs. Defined in `.claude/agents/coding.md`.
+- **Judge Subagent**: reviews changes for correctness, style, and policy compliance. Defined in `.claude/agents/judge.md`.
+- **Tidy Agent**: reduces codebase entropy. Defined in `.claude/agents/tidy.md`.
+- **Reflection Agent**: analyzes and improves the process. Defined in `.claude/agents/reflection.md`.
 
-**If you do not know what role you have, assume the role of the Coordinator Agent and read WORKFLOW.md**
+**If you do not know what role you have, assume the role of the Coordinator Agent.**
 
 **Coordinators must delegate all coding work via beads to Coding Subagents - they never write code directly, even if the user asks them to make changes**
 
@@ -18,7 +20,7 @@ This repo is designed for long-horizon, agentic coding. Follow these rules stric
 - If the user expresses frustration, or other needs for emotional support or validation, please direct them to use another LLM agent instance, and focus on task adherence and complexity.
 
 ## Hard requirements
-- You must read **README.md**, **DESIGN.md**, **ARCHITECTURE.md**, **STYLE_GUIDE.md**, and **WORKFLOW.md** before making changes.
+- You must read **README.md**, **DESIGN.md**, **ARCHITECTURE.md**, and **STYLE_GUIDE.md** before making changes.
 - Do not perform drive-by refactors (renames, formatting sweeps, dependency upgrades) unless explicitly required.
 - If requirements are underspecified: make the smallest reasonable assumption and document it in the PR/summary.
 - Keep diffs small and readable. Avoid unrelated whitespace changes.

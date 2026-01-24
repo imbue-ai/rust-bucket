@@ -459,12 +459,17 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
 
         // Create only one managed file
-        fs::write(temp_dir.path().join("WORKFLOW.md"), "existing content").unwrap();
+        fs::create_dir_all(temp_dir.path().join(".claude/agents")).unwrap();
+        fs::write(
+            temp_dir.path().join(".claude/agents/coordinator.md"),
+            "existing content",
+        )
+        .unwrap();
 
         let conflicts = check_conflicts(temp_dir.path());
 
         // Should detect exactly one conflict
         assert_eq!(conflicts.len(), 1);
-        assert!(conflicts[0].ends_with("WORKFLOW.md"));
+        assert!(conflicts[0].ends_with(".claude/agents/coordinator.md"));
     }
 }

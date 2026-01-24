@@ -3,7 +3,9 @@
 # Counts can only be reduced (tightened) or explicitly bumped with justification.
 
 [no-unwrap]
-"." = 56
+# Bumped 56 -> 57: Added fs::create_dir_all().unwrap() in test_check_conflicts_partial_conflicts
+# test (test-only code, permitted per STYLE_GUIDE.md)
+"." = 57
 
 [no-panic]
 "." = 0

@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Build from source to avoid architecture compatibility issues
 RUN cargo install cargo-nextest --locked
 
-# Install Beads task tracker (required per AGENTS.md and WORKFLOW.md)
+# Install Beads task tracker (required per AGENTS.md)
 # bd must be available on PATH
 # NOTE: Beads is a Go project, NOT a Rust crate. Install via official shell script.
 # Do NOT use "cargo install beads" - that installs an unrelated empty crate.

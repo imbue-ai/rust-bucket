@@ -36,8 +36,8 @@ The initial "managed" set is expected to include:
 - `AGENTS.md`
 - `CLAUDE.md`
 - `STYLE_GUIDE.md`
-- `WORKFLOW.md`
 - `TESTING.md`
+- `.claude/agents/*.md` (coordinator, coding, judge, tidy, reflection)
 - `.config/nextest.toml`
 - `deny.toml` (if enabled)
 - `rustfmt.toml` / clippy configuration (as needed)
