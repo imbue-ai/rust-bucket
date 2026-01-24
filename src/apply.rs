@@ -124,7 +124,11 @@ pub fn apply_init(target_dir: &Path, force: bool) -> Result<ApplyResult, ApplyEr
 
     // Step 8: Render templates to target dir
     // When force is true, we use overwrite=true to replace existing files
-    let files_generated = generator::render(&temp_path, target_dir, &config, force)?;
+    let mut files_generated = generator::render(&temp_path, target_dir, &config, force)?;
+
+    // Step 8b: Create CLAUDE.md symlink to AGENTS.md
+    let claude_symlink = generator::create_claude_symlink(target_dir)?;
+    files_generated.push(claude_symlink);
 
     // Step 9: Run verification
     let verification = verify::run_all(target_dir)?;
@@ -206,7 +210,11 @@ pub fn apply_update(target_dir: &Path) -> Result<ApplyResult, ApplyError> {
 
     // Step 10: Render templates to target dir with overwrite=true
     // Note: The update flow is simpler than init - no conflict checking needed since overwrite=true
-    let files_generated = generator::render(&temp_path, target_dir, &config, true)?;
+    let mut files_generated = generator::render(&temp_path, target_dir, &config, true)?;
+
+    // Step 10b: Create CLAUDE.md symlink to AGENTS.md
+    let claude_symlink = generator::create_claude_symlink(target_dir)?;
+    files_generated.push(claude_symlink);
 
     // Step 11: Run verification
     let verification = verify::run_all(target_dir)?;

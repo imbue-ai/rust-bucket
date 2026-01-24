@@ -4,6 +4,8 @@ use crate::config::Config;
 use crate::templates;
 use liquid::ParserBuilder;
 use std::fs;
+#[cfg(unix)]
+use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use walkdir::WalkDir;
@@ -183,6 +185,47 @@ pub fn check_conflicts(target_dir: &Path) -> Vec<PathBuf> {
         .map(|file| target_dir.join(file))
         .filter(|path| path.exists())
         .collect()
+}
+
+/// Create the CLAUDE.md symlink pointing to AGENTS.md
+///
+/// This creates a symbolic link at CLAUDE.md that points to AGENTS.md,
+/// allowing Claude Code to find the agent instructions via its standard
+/// CLAUDE.md lookup while keeping the canonical content in AGENTS.md.
+///
+/// # Arguments
+/// * `target_dir` - Directory where the symlink should be created
+///
+/// # Errors
+/// Returns `GeneratorError::IoError` if the symlink cannot be created
+#[cfg(unix)]
+pub fn create_claude_symlink(target_dir: &Path) -> Result<PathBuf, GeneratorError> {
+    let claude_md = target_dir.join("CLAUDE.md");
+
+    // Remove existing file or symlink if present
+    if claude_md.exists() || claude_md.is_symlink() {
+        fs::remove_file(&claude_md)?;
+    }
+
+    // Create symlink: CLAUDE.md -> AGENTS.md
+    symlink("AGENTS.md", &claude_md)?;
+
+    Ok(claude_md)
+}
+
+/// Create the CLAUDE.md symlink pointing to AGENTS.md (Windows version)
+///
+/// On Windows, we create a regular file copy instead of a symlink
+/// since symlinks require elevated privileges.
+#[cfg(windows)]
+pub fn create_claude_symlink(target_dir: &Path) -> Result<PathBuf, GeneratorError> {
+    let claude_md = target_dir.join("CLAUDE.md");
+    let agents_md = target_dir.join("AGENTS.md");
+
+    // Copy AGENTS.md to CLAUDE.md
+    fs::copy(&agents_md, &claude_md)?;
+
+    Ok(claude_md)
 }
 
 #[cfg(test)]

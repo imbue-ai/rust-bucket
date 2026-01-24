@@ -70,23 +70,36 @@ fn test_init_on_fresh_repo() {
     let files_generated =
         rust_bucket::generator::render(&template_path, temp_dir.path(), &config, false).unwrap();
 
-    // Assert all managed files were created
+    // Create CLAUDE.md symlink (normally done by apply functions)
+    let claude_symlink = rust_bucket::generator::create_claude_symlink(temp_dir.path()).unwrap();
+
+    // Assert all managed files were created (render generates all except CLAUDE.md symlink)
     let managed_files = rust_bucket::templates::managed_files();
+    // files_generated from render() + 1 for CLAUDE.md symlink = managed_files count
     assert_eq!(
-        files_generated.len(),
+        files_generated.len() + 1,
         managed_files.len(),
-        "Should generate all managed files"
+        "Should generate all managed files (render + symlink)"
     );
 
     // Verify each managed file exists
     for file in managed_files {
         let file_path = temp_dir.path().join(file);
         assert!(
-            file_path.exists(),
+            file_path.exists() || file_path.is_symlink(),
             "Managed file should exist: {}",
             file_path.display()
         );
     }
+
+    // Verify CLAUDE.md is a symlink to AGENTS.md
+    assert!(claude_symlink.is_symlink(), "CLAUDE.md should be a symlink");
+    let link_target = fs::read_link(&claude_symlink).unwrap();
+    assert_eq!(
+        link_target.to_str().unwrap(),
+        "AGENTS.md",
+        "CLAUDE.md should point to AGENTS.md"
+    );
 
     // Assert rust-bucket.toml was created
     assert!(config_path.exists(), "rust-bucket.toml should exist");

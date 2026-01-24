@@ -74,7 +74,7 @@ pub fn extract_to_temp() -> Result<(TempDir, PathBuf), TemplateError> {
 pub fn managed_files() -> Vec<&'static str> {
     vec![
         "AGENTS.md",
-        "CLAUDE.md",
+        "CLAUDE.md", // symlink to AGENTS.md, created separately
         "STYLE_GUIDE.md",
         "TESTING.md",
         ".claude/agents/coordinator.md",
