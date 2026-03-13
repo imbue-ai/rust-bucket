@@ -18,22 +18,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Build from source to avoid architecture compatibility issues
 RUN cargo install cargo-nextest --locked
 
-# Install Beads task tracker (required per AGENTS.md)
-# bd must be available on PATH
-# NOTE: Beads is a Go project, NOT a Rust crate. Install via official shell script.
-# Do NOT use "cargo install beads" - that installs an unrelated empty crate.
-# Install Go 1.24+ (required for beads v0.46.0) from official binary distribution.
-# Debian bookworm's golang-go package provides only Go 1.19, which is too old.
-RUN ARCH=$(dpkg --print-architecture) && \
-    if [ "$ARCH" = "amd64" ]; then GOARCH="amd64"; \
-    elif [ "$ARCH" = "arm64" ]; then GOARCH="arm64"; \
-    else echo "Unsupported architecture: $ARCH" && exit 1; fi && \
-    curl -fsSL "https://go.dev/dl/go1.24.2.linux-${GOARCH}.tar.gz" | tar -C /usr/local -xzf - && \
-    /usr/local/go/bin/go install github.com/steveyegge/beads/cmd/bd@v0.46.0 && \
-    (command -v bd || ln -sf /root/go/bin/bd /usr/local/bin/bd 2>/dev/null || true)
+# Install beads_rust task tracker (required per AGENTS.md)
+# br must be available on PATH
+# See: https://github.com/Dicklesworthstone/beads_rust
+RUN cargo install --git https://github.com/Dicklesworthstone/beads_rust.git
 
 # Ensure all tool binaries are on PATH
-ENV PATH="/usr/local/go/bin:/root/go/bin:/root/.local/bin:/root/.cargo/bin:${PATH}"
+ENV PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
 
 # Installs ratchet for validating project ratchets
 RUN curl -sSf https://raw.githubusercontent.com/imbue-ai/ratchet/main/install.sh | sh
@@ -45,7 +36,7 @@ WORKDIR /workspace
 RUN echo "=== Verifying installations ===" && \
     cargo --version && \
     cargo-nextest --version && \
-    (bd version || echo "Warning: bd not in PATH yet, but continuing...") && \
+    (br --version || echo "Warning: br not in PATH yet, but continuing...") && \
     ratchet --version && \
     echo "=== All verifications complete ==="
 
