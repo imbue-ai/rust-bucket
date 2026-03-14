@@ -6,4 +6,5 @@ pub mod config;
 pub mod generator;
 pub mod migrations;
 pub mod templates;
+pub mod upgrade;
 pub mod verify;
