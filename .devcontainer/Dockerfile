@@ -26,8 +26,8 @@ RUN cargo install --git https://github.com/Dicklesworthstone/beads_rust.git
 # Ensure all tool binaries are on PATH
 ENV PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
 
-# Installs ratchet for validating project ratchets
-RUN curl -sSf https://raw.githubusercontent.com/imbue-ai/ratchet/main/install.sh | sh
+# Installs ratchets for validating project ratchets
+RUN curl -sSf https://raw.githubusercontent.com/imbue-ai/ratchets/main/install.sh | sh
 
 # Set working directory
 WORKDIR /workspace
@@ -37,7 +37,7 @@ RUN echo "=== Verifying installations ===" && \
     cargo --version && \
     cargo-nextest --version && \
     (br --version || echo "Warning: br not in PATH yet, but continuing...") && \
-    ratchet --version && \
+    ratchets --version && \
     echo "=== All verifications complete ==="
 
 # Default command
