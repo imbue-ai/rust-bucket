@@ -1,9 +1,17 @@
 [package]
-name = "rust-bucket"
+name = "rust-bucket-cli"
 version = "0.6.1"
 edition = "2024"
 description = "Long-horizon agentic coding scaffold for Rust projects"
 license = "MIT"
+
+[lib]
+name = "rust_bucket"
+path = "src/lib.rs"
+
+[[bin]]
+name = "rust-bucket"
+path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
