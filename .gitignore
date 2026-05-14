@@ -1,2 +1,7 @@
 # Build artifacts
 target/
+
+# beads_rust junk
+.beads/.br_history/
+.beads/beads.db
+.beads/beads.db-wal

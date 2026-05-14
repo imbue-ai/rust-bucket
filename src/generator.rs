@@ -160,6 +160,48 @@ pub fn render(
     Ok(generated_files)
 }
 
+/// Ensure .gitignore contains all required lines, appending any that are missing.
+///
+/// If no .gitignore exists, one is created with just the required lines.
+/// Existing content is preserved; only missing lines are appended.
+pub fn ensure_gitignore(target_dir: &Path) -> Result<Vec<String>, GeneratorError> {
+    let gitignore_path = target_dir.join(".gitignore");
+    let required = templates::required_gitignore_lines();
+
+    let existing = if gitignore_path.exists() {
+        fs::read_to_string(&gitignore_path)?
+    } else {
+        String::new()
+    };
+
+    let existing_lines: Vec<&str> = existing.lines().collect();
+    let missing: Vec<&str> = required
+        .iter()
+        .filter(|line| !existing_lines.iter().any(|el| el.trim() == **line))
+        .copied()
+        .collect();
+
+    if missing.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut append = String::new();
+    if !existing.is_empty() && !existing.ends_with('\n') {
+        append.push('\n');
+    }
+    if !existing.is_empty() {
+        append.push_str("\n# beads_rust (managed by rust-bucket)\n");
+    }
+    for line in &missing {
+        append.push_str(line);
+        append.push('\n');
+    }
+
+    fs::write(&gitignore_path, format!("{existing}{append}"))?;
+
+    Ok(missing.iter().map(|s| s.to_string()).collect())
+}
+
 /// Check if a target directory contains a rust-bucket.toml marker file
 ///
 /// # Arguments
@@ -514,5 +556,51 @@ mod tests {
         // Should detect exactly one conflict
         assert_eq!(conflicts.len(), 1);
         assert!(conflicts[0].ends_with(".claude/agents/coordinator.md"));
+    }
+
+    #[test]
+    fn test_ensure_gitignore_creates_file_when_missing() {
+        let temp_dir = TempDir::new().unwrap();
+        let added = ensure_gitignore(temp_dir.path()).unwrap();
+        assert_eq!(added.len(), 3);
+        let content = fs::read_to_string(temp_dir.path().join(".gitignore")).unwrap();
+        assert!(content.contains(".beads/.br_history/"));
+        assert!(content.contains(".beads/beads.db-wal"));
+    }
+
+    #[test]
+    fn test_ensure_gitignore_appends_missing_lines() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(temp_dir.path().join(".gitignore"), "target/\n").unwrap();
+        let added = ensure_gitignore(temp_dir.path()).unwrap();
+        assert_eq!(added.len(), 3);
+        let content = fs::read_to_string(temp_dir.path().join(".gitignore")).unwrap();
+        assert!(content.starts_with("target/\n"));
+        assert!(content.contains("# beads_rust (managed by rust-bucket)"));
+        assert!(content.contains(".beads/beads.db"));
+    }
+
+    #[test]
+    fn test_ensure_gitignore_skips_existing_lines() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(
+            temp_dir.path().join(".gitignore"),
+            "target/\n.beads/.br_history/\n.beads/beads.db\n.beads/beads.db-wal\n",
+        )
+        .unwrap();
+        let added = ensure_gitignore(temp_dir.path()).unwrap();
+        assert!(added.is_empty());
+    }
+
+    #[test]
+    fn test_ensure_gitignore_is_idempotent() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(temp_dir.path().join(".gitignore"), "target/\n").unwrap();
+        ensure_gitignore(temp_dir.path()).unwrap();
+        let first = fs::read_to_string(temp_dir.path().join(".gitignore")).unwrap();
+        let added = ensure_gitignore(temp_dir.path()).unwrap();
+        assert!(added.is_empty());
+        let second = fs::read_to_string(temp_dir.path().join(".gitignore")).unwrap();
+        assert_eq!(first, second);
     }
 }

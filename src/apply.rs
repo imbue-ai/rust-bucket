@@ -130,6 +130,9 @@ pub fn apply_init(target_dir: &Path, force: bool) -> Result<ApplyResult, ApplyEr
     let claude_symlink = generator::create_claude_symlink(target_dir)?;
     files_generated.push(claude_symlink);
 
+    // Step 8c: Ensure .gitignore contains required entries
+    generator::ensure_gitignore(target_dir)?;
+
     // Step 9: Run verification
     let verification = verify::run_all(target_dir)?;
 
@@ -215,6 +218,9 @@ pub fn apply_update(target_dir: &Path) -> Result<ApplyResult, ApplyError> {
     // Step 10b: Create CLAUDE.md symlink to AGENTS.md
     let claude_symlink = generator::create_claude_symlink(target_dir)?;
     files_generated.push(claude_symlink);
+
+    // Step 10c: Ensure .gitignore contains required entries
+    generator::ensure_gitignore(target_dir)?;
 
     // Step 11: Run verification
     let verification = verify::run_all(target_dir)?;

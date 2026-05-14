@@ -71,6 +71,14 @@ pub fn extract_to_temp() -> Result<(TempDir, PathBuf), TemplateError> {
 ///
 /// These are the output filenames (not the template names), representing the files
 /// that will be generated or updated by rust-bucket.
+pub fn required_gitignore_lines() -> Vec<&'static str> {
+    vec![
+        ".beads/.br_history/",
+        ".beads/beads.db",
+        ".beads/beads.db-wal",
+    ]
+}
+
 pub fn managed_files() -> Vec<&'static str> {
     vec![
         "AGENTS.md",
