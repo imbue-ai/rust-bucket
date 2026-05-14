@@ -88,6 +88,7 @@ pub fn managed_files() -> Vec<&'static str> {
         ".devcontainer/Dockerfile",
         ".devcontainer/devcontainer.json",
         ".beads/config.yaml",
+        "justfile-rustbucket",
     ]
 }
 
@@ -113,7 +114,7 @@ mod tests {
     fn test_managed_files_not_empty() {
         let files = managed_files();
         assert!(!files.is_empty());
-        assert_eq!(files.len(), 15);
+        assert_eq!(files.len(), 16);
     }
 
     #[test]
