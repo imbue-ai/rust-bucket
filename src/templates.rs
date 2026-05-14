@@ -83,7 +83,7 @@ pub fn managed_files() -> Vec<&'static str> {
     vec![
         "AGENTS.md",
         "CLAUDE.md", // symlink to AGENTS.md, created separately
-        "STYLE_GUIDE.md",
+        "RUST_STYLE_GUIDE.md",
         "TESTING.md",
         ".claude/agents/coordinator.md",
         ".claude/agents/coding.md",
@@ -129,7 +129,7 @@ mod tests {
     fn test_managed_files_includes_expected() {
         let files = managed_files();
         assert!(files.contains(&"AGENTS.md"));
-        assert!(files.contains(&"STYLE_GUIDE.md"));
+        assert!(files.contains(&"RUST_STYLE_GUIDE.md"));
         assert!(files.contains(&".config/nextest.toml"));
         assert!(files.contains(&".devcontainer/Dockerfile"));
     }

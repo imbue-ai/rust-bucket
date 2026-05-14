@@ -202,6 +202,23 @@ pub fn ensure_gitignore(target_dir: &Path) -> Result<Vec<String>, GeneratorError
     Ok(missing.iter().map(|s| s.to_string()).collect())
 }
 
+/// Create a starter STYLE_GUIDE.md if one does not already exist.
+///
+/// STYLE_GUIDE.md is user-editable and not managed by rust-bucket.
+/// This only seeds the file on first run; subsequent applies leave it alone.
+pub fn seed_style_guide(target_dir: &Path) -> Result<bool, GeneratorError> {
+    let path = target_dir.join("STYLE_GUIDE.md");
+    if path.exists() {
+        return Ok(false);
+    }
+    fs::write(
+        &path,
+        "# Style Guide\n\nProject-specific coding standards go here.\n\
+         See also `RUST_STYLE_GUIDE.md` for Rust-specific rules managed by rust-bucket.\n",
+    )?;
+    Ok(true)
+}
+
 /// Check if a target directory contains a rust-bucket.toml marker file
 ///
 /// # Arguments
@@ -515,7 +532,11 @@ mod tests {
 
         // Create some managed files that would conflict
         fs::write(temp_dir.path().join("AGENTS.md"), "existing content").unwrap();
-        fs::write(temp_dir.path().join("STYLE_GUIDE.md"), "existing content").unwrap();
+        fs::write(
+            temp_dir.path().join("RUST_STYLE_GUIDE.md"),
+            "existing content",
+        )
+        .unwrap();
 
         // Create .devcontainer directory and file
         let devcontainer_dir = temp_dir.path().join(".devcontainer");
@@ -535,7 +556,7 @@ mod tests {
             .collect();
 
         assert!(conflict_names.contains(&"AGENTS.md".to_string()));
-        assert!(conflict_names.contains(&"STYLE_GUIDE.md".to_string()));
+        assert!(conflict_names.contains(&"RUST_STYLE_GUIDE.md".to_string()));
         assert!(conflict_names.contains(&"Dockerfile".to_string()));
     }
 

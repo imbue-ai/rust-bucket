@@ -133,6 +133,9 @@ pub fn apply_init(target_dir: &Path, force: bool) -> Result<ApplyResult, ApplyEr
     // Step 8c: Ensure .gitignore contains required entries
     generator::ensure_gitignore(target_dir)?;
 
+    // Step 8d: Seed STYLE_GUIDE.md if it doesn't exist
+    generator::seed_style_guide(target_dir)?;
+
     // Step 9: Run verification
     let verification = verify::run_all(target_dir)?;
 
@@ -221,6 +224,9 @@ pub fn apply_update(target_dir: &Path) -> Result<ApplyResult, ApplyError> {
 
     // Step 10c: Ensure .gitignore contains required entries
     generator::ensure_gitignore(target_dir)?;
+
+    // Step 10d: Seed STYLE_GUIDE.md if it doesn't exist
+    generator::seed_style_guide(target_dir)?;
 
     // Step 11: Run verification
     let verification = verify::run_all(target_dir)?;
