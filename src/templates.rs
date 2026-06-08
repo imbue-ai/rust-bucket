@@ -67,10 +67,7 @@ pub fn extract_to_temp() -> Result<(TempDir, PathBuf), TemplateError> {
     Ok((temp_dir, temp_path))
 }
 
-/// Returns the list of all files that rust-bucket manages in the target repository.
-///
-/// These are the output filenames (not the template names), representing the files
-/// that will be generated or updated by rust-bucket.
+/// Returns the .gitignore entries that rust-bucket requires in the target repository.
 pub fn required_gitignore_lines() -> Vec<&'static str> {
     vec![
         ".beads/.br_history/",
