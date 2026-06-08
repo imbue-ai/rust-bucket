@@ -94,6 +94,16 @@ Coding/Judge/Tidy subagents already read `AGENTS.md` and their own `.claude/agen
 - any task-specific constraints not covered by AGENTS.md,
 - a pointer to AGENTS.md for the standing rules ("Standing rules in AGENTS.md and `.claude/agents/coding.md` apply.").
 
+## Plan-to-bead translation: mark deferrable scope explicitly
+When translating a blueprint plan into beads, the plan often promises behavior at a phase boundary (e.g. "Phase 3 applies X onto the surviving items") that turns out to be pre-existing-unwired. Two failure modes follow:
+1. The subagent doesn't deliver it because the wiring was already absent and the test surface didn't force it.
+2. Judge correctly flags the gap, but the result is ambiguous: pass-with-followup, or fail-and-retry?
+
+Mitigation when authoring bead descriptions from a plan:
+- For each promised behavior, mark it explicitly as **must-land in this bead** or **may be deferred (file follow-up)**. Default is must-land; deferral requires a one-line justification (e.g. "pre-existing gap; out of plan's stated scope for this phase").
+- When Judge surfaces a gap that matches a "may be deferred" marker, the Coordinator files a follow-up bead and closes the current one as PASS.
+- When Judge surfaces a gap with no marker, treat it as a real fail and retry.
+
 ## Graphviz workflow (Coordinator)
 
 ```dot
