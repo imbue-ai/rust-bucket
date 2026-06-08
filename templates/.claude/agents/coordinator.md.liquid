@@ -104,6 +104,17 @@ Mitigation when authoring bead descriptions from a plan:
 - When Judge surfaces a gap that matches a "may be deferred" marker, the Coordinator files a follow-up bead and closes the current one as PASS.
 - When Judge surfaces a gap with no marker, treat it as a real fail and retry.
 
+## Commit-message escaping
+Apostrophes (e.g. `it's`) in bash heredocs can break `git commit -m`. When a commit message contains single quotes, write the message to a temp file and use `-F`:
+```bash
+cat > /tmp/commit-msg.txt <<'EOF'
+Your subject line
+
+Body with an apostrophe is safe here.
+EOF
+git commit -F /tmp/commit-msg.txt
+```
+
 ## Graphviz workflow (Coordinator)
 
 ```dot
