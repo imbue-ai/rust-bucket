@@ -76,6 +76,16 @@ When delegating to a subagent, use the Task tool with the appropriate agent:
 
 
 
+## Editor diagnostics vs cargo
+- After each commit, the harness may surface stale rust-analyzer diagnostics that look like real compile errors. **Verify any suspicious diagnostic against `cargo check --all-targets` before failing a bead.** If cargo is clean, treat the editor diagnostic as noise and pass to Judge.
+- Benign inactive-code hints (`#[cfg(not(...))]` blocks) are expected for multi-config modules; ignore them and tell Judge to ignore them too.
+- **Known-staleness patterns.** The following editor diagnostic shapes have repeatedly been false positives and should be verified against cargo with low confidence of a real bug:
+  - `E0063` "missing field(s) in initializer" after a struct grew a new field in the same commit.
+  - `E0425` "cannot find function/value/variant in this scope" after a module added a new pub item or a new enum variant.
+  - "pattern does not mention field X" after a struct gained or renamed a field.
+  - "unresolved import" pointing at a module that exists on disk and is declared in `mod.rs` / `lib.rs`.
+  When you see one of these immediately after a coding subagent's commit, run `cargo check --all-targets` once. If it is clean, pass to Judge without a second round; do not re-prompt the subagent.
+
 ## Graphviz workflow (Coordinator)
 
 ```dot
