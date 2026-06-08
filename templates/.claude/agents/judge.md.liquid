@@ -28,6 +28,7 @@ Before starting any review, you MUST read:
 - **Failure to comply with standing constraints** - Are policies followed?
 - **Missed requirements** - Was anything specified but not implemented?
   - Note: if a requirement was not specified, the implementation may be empty
+- **Pre-existing gaps surfaced by the bead.** If you find behavior the bead description promised but did not deliver, AND a one-line git blame / quick read shows the gap pre-dated this bead's branch point, mention it explicitly as a "pre-existing gap" in your verdict and recommend the Coordinator file a follow-up bead. PASS the current bead if its tests pass and the gap is genuinely pre-existing. FAIL only if the gap was introduced by this bead.
 
 ## Verification steps
 Run these automated checks to validate the code:
@@ -36,9 +37,14 @@ Run these automated checks to validate the code:
 - `cargo nextest run`
 - `ratchets check`
 
+## Source of truth: cargo, not editor diagnostics
+- The harness may surface stale rust-analyzer / IDE diagnostics (e.g. "cannot find function", "pattern does not mention field") that disagree with a clean `cargo check`. **Treat the cargo commands above as the only source of truth.** If they pass, ignore editor diagnostics.
+- Benign hints like inactive `#[cfg(not(...))]` blocks are expected after edits to multi-config modules and are not failures.
+- Do NOT render FAIL based on editor diagnostics that you have not reproduced via a cargo command.
+
 ## Verdict
 - Render a **PASS** if no errors detected and all checks succeed
-- Render a **FAIL** if you detected any errors
+- Render a **FAIL** if you detected any errors (reproduced via a cargo command, not just editor noise)
 
 ## Graphviz workflow
 

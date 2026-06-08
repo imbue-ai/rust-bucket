@@ -3,5 +3,6 @@ target/
 
 # beads_rust junk
 .beads/.br_history/
+.beads/.write.lock
 .beads/beads.db
 .beads/beads.db-wal
