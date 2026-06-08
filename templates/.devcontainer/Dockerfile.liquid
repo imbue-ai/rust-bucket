@@ -26,8 +26,8 @@ RUN cargo install --git https://github.com/Dicklesworthstone/beads_rust.git
 # Ensure all tool binaries are on PATH
 ENV PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
 
-# Installs ratchets for validating project ratchets
-RUN curl -sSf https://raw.githubusercontent.com/imbue-ai/ratchets/main/install.sh | sh
+# Installs ratchets (pinned) for validating project ratchets
+RUN cargo install ratchets@0.3.1
 
 # Set working directory
 WORKDIR /workspace
