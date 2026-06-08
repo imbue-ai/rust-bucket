@@ -208,12 +208,7 @@ const STYLE_GUIDE_SEED: &str = "\
 Project-specific coding standards go here.\n\
 See also `RUST_STYLE_GUIDE.md` for Rust-specific rules managed by rust-bucket.\n";
 
-/// Seed STYLE_GUIDE.md if missing, or replace it if it's a stale managed file.
-///
-/// Prior to 0.6.5, STYLE_GUIDE.md was managed by rust-bucket. It was renamed
-/// to RUST_STYLE_GUIDE.md and STYLE_GUIDE.md became user-editable. On upgrade,
-/// detect the old managed header and replace with the seed content so the user
-/// gets a clean starting point.
+/// Replaces STYLE_GUIDE.md only when it is a stale rust-bucket-managed file (identified by the generated header); user-edited files are left untouched.
 pub fn seed_style_guide(target_dir: &Path) -> Result<bool, GeneratorError> {
     let path = target_dir.join("STYLE_GUIDE.md");
     if path.exists() {

@@ -31,10 +31,7 @@ edition = "2024"
     fs::write(src_dir.join("lib.rs"), "// test lib\n").unwrap();
 }
 
-/// Helper function to create a mock CLI input for test_timeout prompt
-///
-/// Since tests don't have interactive input, we'll need to work around the CLI prompt.
-/// For these integration tests, we'll call apply functions with pre-set configs.
+/// Builds a Config with default test values for integration tests.
 fn create_test_config() -> rust_bucket::config::Config {
     rust_bucket::config::Config {
         rust_bucket_version: env!("CARGO_PKG_VERSION").to_string(),
@@ -50,7 +47,6 @@ fn test_init_on_fresh_repo() {
     create_test_rust_crate(temp_dir.path());
 
     // Note: We cannot directly test apply_init because it requires interactive prompt_test_timeout
-    // Instead, we'll test the underlying functions that apply_init uses
 
     // Verify preconditions
     assert!(temp_dir.path().join("Cargo.toml").exists());

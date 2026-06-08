@@ -63,61 +63,41 @@ pub enum UpgradeError {
 
 /// Run the upgrade command on a target directory.
 ///
-/// This function:
-/// 1. Asserts Cargo.toml and .git/ exist
-/// 2. Asserts rust-bucket.toml exists (else error: use `rust-bucket apply` first)
-/// 3. Loads config, captures old_version
-/// 4. Parses old/new versions with semver
-/// 5. Collects migrations between old and new
-/// 6. Updates config version, saves
-/// 7. Extracts templates, renders with overwrite=true
-/// 8. Creates CLAUDE.md symlink
-/// 9. Runs verification
-/// 10. Returns UpgradeResult with migrations
+/// Implements the upgrade flow described in ARCHITECTURE.md.
 pub fn run_upgrade(target_dir: &Path) -> Result<UpgradeResult, UpgradeError> {
-    // Step 1: Assert Cargo.toml exists
     if !target_dir.join("Cargo.toml").exists() {
         return Err(UpgradeError::NotRustCrate);
     }
 
-    // Step 2: Assert .git/ exists
     if !target_dir.join(".git").exists() {
         return Err(UpgradeError::NotGitRepo);
     }
 
-    // Step 3: Assert rust-bucket.toml exists
     if !generator::has_rust_bucket_toml(target_dir) {
         return Err(UpgradeError::NotInitialized);
     }
 
-    // Step 4: Load config, capture old version
     let config_path = target_dir.join("rust-bucket.toml");
     let mut config = Config::load(&config_path)?;
     let old_version_str = config.rust_bucket_version.clone();
     let new_version_str = env!("CARGO_PKG_VERSION").to_string();
 
-    // Step 5: Parse versions
     let old_version = Version::parse(&old_version_str)
         .map_err(|e| UpgradeError::VersionParse(old_version_str.clone(), e))?;
     let new_version = Version::parse(&new_version_str)
         .map_err(|e| UpgradeError::VersionParse(new_version_str.clone(), e))?;
 
-    // Step 6: Collect migrations
     let migrations_list = migrations::migrations_between(&old_version, &new_version)?;
 
-    // Step 7: Update config version, save
     config.rust_bucket_version = new_version_str.clone();
     config.save(&config_path)?;
 
-    // Step 8: Extract templates, render with overwrite=true
     let (_temp_dir, temp_path) = templates::extract_to_temp()?;
     let mut files_generated = generator::render(&temp_path, target_dir, &config, true)?;
 
-    // Step 9: Create CLAUDE.md symlink
     let claude_symlink = generator::create_claude_symlink(target_dir)?;
     files_generated.push(claude_symlink);
 
-    // Step 10: Run verification
     let verification = verify::run_all(target_dir)?;
 
     Ok(UpgradeResult {
