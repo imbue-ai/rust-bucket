@@ -86,6 +86,14 @@ When delegating to a subagent, use the Task tool with the appropriate agent:
   - "unresolved import" pointing at a module that exists on disk and is declared in `mod.rs` / `lib.rs`.
   When you see one of these immediately after a coding subagent's commit, run `cargo check --all-targets` once. If it is clean, pass to Judge without a second round; do not re-prompt the subagent.
 
+## Delegation prompt convention
+Coding/Judge/Tidy subagents already read `AGENTS.md` and their own `.claude/agents/<role>.md` on startup. Do NOT re-state the standing rules (read-docs order, definition of done, refactor gating, do-not-close-bead, trust-cargo-not-editor) in every delegation prompt — that is repeated context per bead. Keep delegation prompts focused on:
+- the bead id and a one-line goal,
+- the specific files / patterns relevant to this task,
+- the pre-attempt commit hash (for rollback),
+- any task-specific constraints not covered by AGENTS.md,
+- a pointer to AGENTS.md for the standing rules ("Standing rules in AGENTS.md and `.claude/agents/coding.md` apply.").
+
 ## Graphviz workflow (Coordinator)
 
 ```dot
