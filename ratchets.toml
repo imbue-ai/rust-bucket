@@ -1,7 +1,9 @@
-[ratchets]
-version = "1"
+# Rules are opt-in. Enable rule IDs or $set references here; entries in
+# disabled_ratchets subtract from this union (disabled always wins).
+enabled_ratchets = ["$common-starter", "no-unwrap", "no-panic"]
 
-# Languages to enable (uncomment as needed)
+[ratchets]
+version = "2"
 languages = ["rust"]
 
 # File patterns to include (defaults to all)
@@ -9,11 +11,6 @@ languages = ["rust"]
 
 # File patterns to exclude
 # exclude = ["**/generated/**"]
-
-[rules]
-# Built-in rules are enabled by default
-# Disable a rule: rule-name = false
-# Configure a rule: rule-name = { severity = "warning" }
 
 [output]
 format = "human"
