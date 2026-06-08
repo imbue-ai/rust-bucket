@@ -64,6 +64,7 @@ When delegating to a subagent, use the Task tool with the appropriate agent:
 - **Bead IDs**: `br create` auto-generates short random IDs (e.g. `code-9y0`). Do not override them.
 - Update bead status with: `br update <id> --status done`
 - When creating, updating, or closing beads, commit the changes to `.beads/issues.jsonl` and `.beads/last-touched` to ensure bead state is tracked in version control.
+- **Bead state is the Coordinator's exclusive responsibility.** Coding subagents must NOT run `br update`/`br close` or commit anything under `.beads/`. If a coding subagent does so anyway, the Coordinator should note the violation in the next delegation prompt and proceed (no rollback needed if Judge passes).
 - If a subagent fails:
   - hard reset to pre-attempt commit: `git reset --hard <good_commit>`
   - run a Judge subagent to analyze the failure mode
