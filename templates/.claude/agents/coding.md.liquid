@@ -41,6 +41,18 @@ Before starting any work, you MUST read:
 - Benign hints like inactive `#[cfg(not(...))]` blocks are expected and not failures.
 - If you see an editor diagnostic but `cargo check` is clean, do not start a fix; verify against cargo and proceed.
 
+## Conform to lint policy — including in test code
+The repo's lint/policy rules apply to ALL code, **including test code** (`#[cfg(test)]` modules and `tests/`). Do NOT route around a rule by relocating code, carving out `#[cfg(test)]`, adding `allow`/`exclude` entries, or raising a threshold — make the code conform.
+
+If the repo bans `.unwrap()` / `.expect(...)` / `panic!(...)` (the single exception being a test that asserts a panic, e.g. `#[should_panic]`), convert to the fallible idiom rather than routing around:
+- Test fn signature → `fn test_x() -> Result<(), Box<dyn std::error::Error>>`, ending in `Ok(())`.
+- `.unwrap()` on a `Result` → `?`.
+- `.unwrap()` / `.expect("..")` on an `Option` → `.ok_or("description")?`.
+- `panic!("msg")` in an assertion arm → `return Err("msg".into())`.
+- `assert!`, `assert_eq!`, `assert_ne!`, `matches!`, `.unwrap_err()`, `.expect_err()` are fine — prefer them in tests.
+
+The same applies to comment lints (e.g. no-TODO / no-FIXME): don't weaken prose to dodge them, and don't commit TODO/FIXME markers. If a task seems to force a banned construct, conforming is the cheapest path to green, not routing around.
+
 ## Refactor gating rule
 If your task is blocked by a large refactor that you are not cleared to do:
 - Do **not** do the refactor.

@@ -115,6 +115,13 @@ EOF
 git commit -F /tmp/commit-msg.txt
 ```
 
+## Policy rules are not negotiable — conform, never route around
+The repo's configured lint and policy rules (clippy `deny` lints, `deny.toml`, `rustfmt`, and any project lint or policy-check tool) apply to ALL code in the repo, **including test code**. They are correct as written. A subagent must NEVER route around them — not by moving a `src/` test to `tests/`, not by carving `#[cfg(test)]` out of a rule's scope, not by adding `allow`/`exclude` globs, not by raising a lint threshold or allow-count to absorb a fresh violation.
+
+- If the repo bans constructs such as `.unwrap()` / `.expect(...)` / `panic!(...)` (e.g. via `clippy::unwrap_used`), that ban is absolute and includes unit tests; the only exception is a test that specifically asserts a panic. Convert to the fallible idiom instead — see `coding.md`.
+- If you ever see a commit that routed around a rule (test relocated to dodge it, threshold/allow-count raised to absorb a new violation, prose weakened to dodge a comment lint), that is a DEFECT to revert, not a pattern to bless. File a P1 to make the offending code conform, and reset the workaround.
+- A threshold/allow-count increase is only ever justified for pre-existing violations being formally tracked — never to absorb a violation the current bead introduced. Watch the lint/policy config diff on every bead: if an allow-count or threshold moved in the permissive direction, the bead added banned constructs and must be sent back.
+
 ## Graphviz workflow (Coordinator)
 
 ```dot
