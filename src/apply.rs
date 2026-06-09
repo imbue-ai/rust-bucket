@@ -111,6 +111,9 @@ pub fn apply_init(target_dir: &Path, force: bool) -> Result<ApplyResult, ApplyEr
 
     generator::seed_style_guide(target_dir)?;
 
+    let seeded = generator::seed_files(&temp_path, target_dir, &config)?;
+    files_generated.extend(seeded);
+
     let verification = verify::run_all(target_dir)?;
 
     Ok(ApplyResult {
@@ -170,6 +173,9 @@ pub fn apply_update(target_dir: &Path) -> Result<ApplyResult, ApplyError> {
     generator::ensure_gitignore(target_dir)?;
 
     generator::seed_style_guide(target_dir)?;
+
+    let seeded = generator::seed_files(&temp_path, target_dir, &config)?;
+    files_generated.extend(seeded);
 
     let verification = verify::run_all(target_dir)?;
 

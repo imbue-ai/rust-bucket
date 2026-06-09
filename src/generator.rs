@@ -74,6 +74,13 @@ pub fn render(
         "project_name": config.project_name,
     });
 
+    // Seed templates are written only via seed_files(); the managed render path
+    // must never emit them.
+    let seed_template_paths: Vec<&str> = templates::seed_files()
+        .into_iter()
+        .map(|(template, _)| template)
+        .collect();
+
     // Track all files that will be generated
     let mut target_files = Vec::new();
 
@@ -94,6 +101,14 @@ pub fn render(
         let relative_path = template_path
             .strip_prefix(template_dir)
             .map_err(|e| GeneratorError::PathError(e.to_string()))?;
+
+        // Skip seed templates; they are handled by seed_files().
+        if seed_template_paths
+            .iter()
+            .any(|seed| Path::new(seed) == relative_path)
+        {
+            continue;
+        }
 
         // Remove .liquid extension for output file
         let output_relative_path = relative_path.with_extension("");
@@ -134,6 +149,14 @@ pub fn render(
         let relative_path = template_path
             .strip_prefix(template_dir)
             .map_err(|e| GeneratorError::PathError(e.to_string()))?;
+
+        // Skip seed templates; they are handled by seed_files().
+        if seed_template_paths
+            .iter()
+            .any(|seed| Path::new(seed) == relative_path)
+        {
+            continue;
+        }
 
         // Remove .liquid extension for output file
         let output_relative_path = relative_path.with_extension("");
@@ -219,6 +242,51 @@ pub fn seed_style_guide(target_dir: &Path) -> Result<bool, GeneratorError> {
     }
     fs::write(&path, STYLE_GUIDE_SEED)?;
     Ok(true)
+}
+
+/// Render and write each registered seed template into the target, but only if
+/// the destination file is absent. Existing files are left byte-for-byte
+/// untouched, so seeding is safe to repeat on every apply.
+///
+/// # Returns
+/// The destination paths that were newly seeded.
+///
+/// # Errors
+/// Returns `GeneratorError` if a seed template cannot be read, parsed, rendered,
+/// or written.
+pub fn seed_files(
+    template_dir: &Path,
+    target_dir: &Path,
+    config: &Config,
+) -> Result<Vec<PathBuf>, GeneratorError> {
+    let parser = ParserBuilder::with_stdlib().build()?;
+    let globals = liquid::object!({
+        "rust_bucket_version": config.rust_bucket_version,
+        "test_timeout": config.test_timeout,
+        "project_name": config.project_name,
+    });
+
+    let mut seeded = Vec::new();
+
+    for (template_rel, dest_rel) in templates::seed_files() {
+        let dest_path = target_dir.join(dest_rel);
+        if dest_path.exists() {
+            continue;
+        }
+
+        let template_path = template_dir.join(template_rel);
+        let template_content = fs::read_to_string(&template_path)?;
+        let template = parser.parse(&template_content)?;
+        let rendered = template.render(&globals)?;
+
+        if let Some(parent) = dest_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&dest_path, rendered)?;
+        seeded.push(dest_path);
+    }
+
+    Ok(seeded)
 }
 
 /// Check if a target directory contains a rust-bucket.toml marker file
@@ -613,6 +681,72 @@ mod tests {
         .unwrap();
         let added = ensure_gitignore(temp_dir.path()).unwrap();
         assert!(added.is_empty());
+    }
+
+    #[test]
+    fn test_seed_files_writes_when_absent() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_template_dir = TempDir::new()?;
+        let temp_target_dir = TempDir::new()?;
+
+        let template_path = temp_template_dir.path().join("ratchets.toml.liquid");
+        fs::write(&template_path, "enabled_ratchets = []\n")?;
+
+        let config = create_test_config();
+        let seeded = seed_files(temp_template_dir.path(), temp_target_dir.path(), &config)?;
+
+        let dest = temp_target_dir.path().join("ratchets.toml");
+        assert!(dest.exists());
+        assert!(seeded.contains(&dest));
+        assert_eq!(fs::read_to_string(&dest)?, "enabled_ratchets = []\n");
+        Ok(())
+    }
+
+    #[test]
+    fn test_seed_files_leaves_existing_unchanged() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_template_dir = TempDir::new()?;
+        let temp_target_dir = TempDir::new()?;
+
+        let template_path = temp_template_dir.path().join("ratchets.toml.liquid");
+        fs::write(&template_path, "enabled_ratchets = []\n")?;
+
+        let dest = temp_target_dir.path().join("ratchets.toml");
+        let custom = "enabled_ratchets = [\"no-unwrap\"]\n# customized\n";
+        fs::write(&dest, custom)?;
+
+        let config = create_test_config();
+        let seeded = seed_files(temp_template_dir.path(), temp_target_dir.path(), &config)?;
+
+        assert!(seeded.is_empty());
+        assert_eq!(fs::read_to_string(&dest)?, custom);
+        Ok(())
+    }
+
+    #[test]
+    fn test_render_skips_seed_templates() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_template_dir = TempDir::new()?;
+        let temp_output_dir = TempDir::new()?;
+
+        let seed_template = temp_template_dir.path().join("ratchets.toml.liquid");
+        fs::write(&seed_template, "enabled_ratchets = []\n")?;
+
+        let managed_template = temp_template_dir.path().join("AGENTS.md.liquid");
+        fs::write(&managed_template, "Version: {{ rust_bucket_version }}")?;
+
+        let config = create_test_config();
+        let generated = render(
+            temp_template_dir.path(),
+            temp_output_dir.path(),
+            &config,
+            false,
+        )?;
+
+        assert!(
+            !temp_output_dir.path().join("ratchets.toml").exists(),
+            "render must not emit seed templates"
+        );
+        assert!(generated.iter().any(|p| p.ends_with("AGENTS.md")));
+        assert!(!generated.iter().any(|p| p.ends_with("ratchets.toml")));
+        Ok(())
     }
 
     #[test]

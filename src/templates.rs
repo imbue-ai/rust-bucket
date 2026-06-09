@@ -97,6 +97,17 @@ pub fn managed_files() -> Vec<&'static str> {
     ]
 }
 
+/// Seed files are written into the target only if absent and are never
+/// overwritten on re-apply; the project owns them once present.
+///
+/// Each entry maps an embedded template path (relative to `templates/`) to its
+/// destination path (relative to the target directory). Seed templates must NOT
+/// appear in `managed_files()`, and `render()` skips them so they are written
+/// only via the seed-if-missing path.
+pub fn seed_files() -> Vec<(&'static str, &'static str)> {
+    vec![("ratchets.toml.liquid", "ratchets.toml")]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -129,5 +140,18 @@ mod tests {
         assert!(files.contains(&"RUST_STYLE_GUIDE.md"));
         assert!(files.contains(&".config/nextest.toml"));
         assert!(files.contains(&".devcontainer/Dockerfile"));
+    }
+
+    #[test]
+    fn test_seed_files_registers_ratchets_toml() {
+        let seeds = seed_files();
+        assert!(seeds.contains(&("ratchets.toml.liquid", "ratchets.toml")));
+    }
+
+    #[test]
+    fn test_ratchets_toml_not_managed() {
+        let managed = managed_files();
+        assert!(!managed.contains(&"ratchets.toml"));
+        assert_eq!(managed.len(), 16);
     }
 }
