@@ -4,6 +4,12 @@ version = "0.8.0"
 edition = "2024"
 description = "Long-horizon agentic coding scaffold for Rust projects"
 license = "MIT"
+repository = "https://github.com/imbue-ai/rust-bucket"
+homepage = "https://github.com/imbue-ai/rust-bucket"
+readme = "README.md"
+keywords = ["agentic", "scaffold", "cli", "automation", "coding"]
+categories = ["command-line-utilities", "development-tools"]
+rust-version = "1.95"
 
 [lib]
 name = "rust_bucket"
