@@ -15,8 +15,7 @@
 
 ## Key decisions
 - **Template format:** Liquid.
-- **Scaffolding engine:** `cargo-generate` used as a library, driven by Rust-Bucket prompts.
-  - If we encounter consistent problems with cargo-generate as a library, create a bead to read the cargo-generate source code and summarize its programmatic API for future subagents in an `.md` file.
+- **Rendering engine:** the `liquid` crate used as a library, driven by values from Rust-Bucket's prompt layer.
 - **Templates location:** embedded into the binary via `rust-embed`, extracted at runtime to a temp directory.
 - **State file:** `rust-bucket.toml` written into the target repo.
 - **Config contents (v1):** Only the test timeout value (and a version stamp comment). More fields will be added later.
@@ -45,7 +44,7 @@ Stores:
 - the Rust-Bucket generator version that last updated the repo
 
 ### 3) Template Pack (embedded)
-`templates/` directory in the Rust-Bucket repo is embedded at build time using an asset-embedding crate (e.g., `include_dir` or `rust-embed`).
+`templates/` directory in the Rust-Bucket repo is embedded at build time using `rust-embed`.
 At runtime:
 - extract embedded templates to a temp directory
 - feed that directory into the generator
@@ -56,8 +55,8 @@ Every template that renders a file must stamp:
 
 ### 4) Generator (render + apply)
 Render strategy:
-- Use `cargo-generate` programmatically with a local template path.
-- Provide values via Rust-Bucket’s prompt layer (not cargo-generate’s prompts).
+- Use the `liquid` template engine programmatically over the extracted template directory.
+- Provide values via Rust-Bucket’s prompt layer, passed to templates as Liquid globals.
 
 Apply strategy:
 - Maintain an explicit list of “managed files”.
