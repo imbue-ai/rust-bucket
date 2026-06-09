@@ -10,7 +10,7 @@ use tempfile::TempDir;
 /// - Cargo.toml with basic package metadata
 /// - .git/ directory (to simulate git init)
 /// - src/ directory with lib.rs
-fn create_test_rust_crate(path: &Path) {
+fn create_test_rust_crate(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     // Create Cargo.toml
     fs::write(
         path.join("Cargo.toml"),
@@ -19,16 +19,16 @@ name = "test-crate"
 version = "0.1.0"
 edition = "2024"
 "#,
-    )
-    .unwrap();
+    )?;
 
     // Create .git directory to simulate git init
-    fs::create_dir(path.join(".git")).unwrap();
+    fs::create_dir(path.join(".git"))?;
 
     // Create src directory with minimal lib.rs
     let src_dir = path.join("src");
-    fs::create_dir(&src_dir).unwrap();
-    fs::write(src_dir.join("lib.rs"), "// test lib\n").unwrap();
+    fs::create_dir(&src_dir)?;
+    fs::write(src_dir.join("lib.rs"), "// test lib\n")?;
+    Ok(())
 }
 
 /// Builds a Config with default test values for integration tests.
@@ -41,10 +41,10 @@ fn create_test_config() -> rust_bucket::config::Config {
 }
 
 #[test]
-fn test_init_on_fresh_repo() {
+fn test_init_on_fresh_repo() -> Result<(), Box<dyn std::error::Error>> {
     // Create temp dir with Cargo.toml and .git/
-    let temp_dir = TempDir::new().unwrap();
-    create_test_rust_crate(temp_dir.path());
+    let temp_dir = TempDir::new()?;
+    create_test_rust_crate(temp_dir.path())?;
 
     // Note: We cannot directly test apply_init because it requires interactive prompt_test_timeout
 
@@ -59,15 +59,15 @@ fn test_init_on_fresh_repo() {
     // Create and save config
     let config = create_test_config();
     let config_path = temp_dir.path().join("rust-bucket.toml");
-    config.save(&config_path).unwrap();
+    config.save(&config_path)?;
 
     // Extract templates and render
-    let (_temp_template_dir, template_path) = rust_bucket::templates::extract_to_temp().unwrap();
+    let (_temp_template_dir, template_path) = rust_bucket::templates::extract_to_temp()?;
     let files_generated =
-        rust_bucket::generator::render(&template_path, temp_dir.path(), &config, false).unwrap();
+        rust_bucket::generator::render(&template_path, temp_dir.path(), &config, false)?;
 
     // Create CLAUDE.md symlink (normally done by apply functions)
-    let claude_symlink = rust_bucket::generator::create_claude_symlink(temp_dir.path()).unwrap();
+    let claude_symlink = rust_bucket::generator::create_claude_symlink(temp_dir.path())?;
 
     // Assert all managed files were created (render generates all except CLAUDE.md symlink)
     let managed_files = rust_bucket::templates::managed_files();
@@ -90,9 +90,11 @@ fn test_init_on_fresh_repo() {
 
     // Verify CLAUDE.md is a symlink to AGENTS.md
     assert!(claude_symlink.is_symlink(), "CLAUDE.md should be a symlink");
-    let link_target = fs::read_link(&claude_symlink).unwrap();
+    let link_target = fs::read_link(&claude_symlink)?;
     assert_eq!(
-        link_target.to_str().unwrap(),
+        link_target
+            .to_str()
+            .ok_or("link target is not valid UTF-8")?,
         "AGENTS.md",
         "CLAUDE.md should point to AGENTS.md"
     );
@@ -101,18 +103,19 @@ fn test_init_on_fresh_repo() {
     assert!(config_path.exists(), "rust-bucket.toml should exist");
 
     // Verify config can be loaded back
-    let loaded_config = rust_bucket::config::Config::load(&config_path).unwrap();
+    let loaded_config = rust_bucket::config::Config::load(&config_path)?;
     assert_eq!(loaded_config.test_timeout, 120);
+    Ok(())
 }
 
 #[test]
-fn test_init_fails_on_conflict() {
+fn test_init_fails_on_conflict() -> Result<(), Box<dyn std::error::Error>> {
     // Create temp dir with existing AGENTS.md
-    let temp_dir = TempDir::new().unwrap();
-    create_test_rust_crate(temp_dir.path());
+    let temp_dir = TempDir::new()?;
+    create_test_rust_crate(temp_dir.path())?;
 
     // Create a conflicting file
-    fs::write(temp_dir.path().join("AGENTS.md"), "existing content").unwrap();
+    fs::write(temp_dir.path().join("AGENTS.md"), "existing content")?;
 
     // Check conflicts are detected
     let conflicts = rust_bucket::generator::check_conflicts(temp_dir.path());
@@ -125,7 +128,7 @@ fn test_init_fails_on_conflict() {
 
     // Try to render without force (overwrite=false) - should fail
     let config = create_test_config();
-    let (_temp_template_dir, template_path) = rust_bucket::templates::extract_to_temp().unwrap();
+    let (_temp_template_dir, template_path) = rust_bucket::templates::extract_to_temp()?;
 
     let result = rust_bucket::generator::render(&template_path, temp_dir.path(), &config, false);
 
@@ -138,33 +141,31 @@ fn test_init_fails_on_conflict() {
         }
         e => panic!("Expected ConflictError, got: {:?}", e),
     }
+    Ok(())
 }
 
 #[test]
-fn test_init_force_overwrites() {
+fn test_init_force_overwrites() -> Result<(), Box<dyn std::error::Error>> {
     // Create temp dir with existing AGENTS.md
-    let temp_dir = TempDir::new().unwrap();
-    create_test_rust_crate(temp_dir.path());
+    let temp_dir = TempDir::new()?;
+    create_test_rust_crate(temp_dir.path())?;
 
     // Create a conflicting file with known content
     let agents_path = temp_dir.path().join("AGENTS.md");
-    fs::write(&agents_path, "OLD CONTENT SHOULD BE REPLACED").unwrap();
+    fs::write(&agents_path, "OLD CONTENT SHOULD BE REPLACED")?;
 
     // Verify the old content exists
-    let old_content = fs::read_to_string(&agents_path).unwrap();
+    let old_content = fs::read_to_string(&agents_path)?;
     assert_eq!(old_content, "OLD CONTENT SHOULD BE REPLACED");
 
     // Run render with force=true (overwrite=true)
     let config = create_test_config();
-    let (_temp_template_dir, template_path) = rust_bucket::templates::extract_to_temp().unwrap();
-    let result = rust_bucket::generator::render(&template_path, temp_dir.path(), &config, true);
-
-    // Assert generation succeeded
-    assert!(result.is_ok(), "Render with force should succeed");
+    let (_temp_template_dir, template_path) = rust_bucket::templates::extract_to_temp()?;
+    rust_bucket::generator::render(&template_path, temp_dir.path(), &config, true)?;
 
     // Assert AGENTS.md was overwritten
     assert!(agents_path.exists(), "AGENTS.md should still exist");
-    let new_content = fs::read_to_string(&agents_path).unwrap();
+    let new_content = fs::read_to_string(&agents_path)?;
 
     // Verify content was replaced (should contain version stamp and not old content)
     assert_ne!(
@@ -183,34 +184,35 @@ fn test_init_force_overwrites() {
         !new_content.contains("OLD CONTENT"),
         "Old content should be gone"
     );
+    Ok(())
 }
 
 #[test]
-fn test_update_preserves_config() {
+fn test_update_preserves_config() -> Result<(), Box<dyn std::error::Error>> {
     // Create temp dir with rust-bucket.toml (custom timeout)
-    let temp_dir = TempDir::new().unwrap();
-    create_test_rust_crate(temp_dir.path());
+    let temp_dir = TempDir::new()?;
+    create_test_rust_crate(temp_dir.path())?;
 
     // Create initial config with custom timeout
     let mut config = create_test_config();
     config.test_timeout = 300; // Custom timeout
     let config_path = temp_dir.path().join("rust-bucket.toml");
-    config.save(&config_path).unwrap();
+    config.save(&config_path)?;
 
     // Extract templates and render (simulating first init)
-    let (_temp_template_dir1, template_path1) = rust_bucket::templates::extract_to_temp().unwrap();
-    rust_bucket::generator::render(&template_path1, temp_dir.path(), &config, false).unwrap();
+    let (_temp_template_dir1, template_path1) = rust_bucket::templates::extract_to_temp()?;
+    rust_bucket::generator::render(&template_path1, temp_dir.path(), &config, false)?;
 
     // Verify nextest.toml contains custom timeout
     let nextest_path = temp_dir.path().join(".config/nextest.toml");
-    let nextest_content = fs::read_to_string(&nextest_path).unwrap();
+    let nextest_content = fs::read_to_string(&nextest_path)?;
     assert!(
         nextest_content.contains("300s"),
         "Initial nextest.toml should have 300s timeout"
     );
 
     // Now simulate an update: load config, update version, re-render with overwrite=true
-    let mut loaded_config = rust_bucket::config::Config::load(&config_path).unwrap();
+    let mut loaded_config = rust_bucket::config::Config::load(&config_path)?;
     assert_eq!(
         loaded_config.test_timeout, 300,
         "Loaded config should preserve custom timeout"
@@ -218,37 +220,38 @@ fn test_update_preserves_config() {
 
     // Update the rust_bucket_version (simulating update flow)
     loaded_config.rust_bucket_version = "0.2.0".to_string();
-    loaded_config.save(&config_path).unwrap();
+    loaded_config.save(&config_path)?;
 
     // Re-render templates with overwrite=true
-    let (_temp_template_dir2, template_path2) = rust_bucket::templates::extract_to_temp().unwrap();
-    rust_bucket::generator::render(&template_path2, temp_dir.path(), &loaded_config, true).unwrap();
+    let (_temp_template_dir2, template_path2) = rust_bucket::templates::extract_to_temp()?;
+    rust_bucket::generator::render(&template_path2, temp_dir.path(), &loaded_config, true)?;
 
     // Assert timeout preserved in regenerated files
-    let updated_nextest_content = fs::read_to_string(&nextest_path).unwrap();
+    let updated_nextest_content = fs::read_to_string(&nextest_path)?;
     assert!(
         updated_nextest_content.contains("300s"),
         "Updated nextest.toml should still have 300s timeout"
     );
 
     // Verify version was updated in config
-    let final_config = rust_bucket::config::Config::load(&config_path).unwrap();
+    let final_config = rust_bucket::config::Config::load(&config_path)?;
     assert_eq!(final_config.rust_bucket_version, "0.2.0");
     assert_eq!(
         final_config.test_timeout, 300,
         "Timeout should be preserved"
     );
+    Ok(())
 }
 
 #[test]
-fn test_version_stamp_in_generated_files() {
+fn test_version_stamp_in_generated_files() -> Result<(), Box<dyn std::error::Error>> {
     // Run apply_init (or just render)
-    let temp_dir = TempDir::new().unwrap();
-    create_test_rust_crate(temp_dir.path());
+    let temp_dir = TempDir::new()?;
+    create_test_rust_crate(temp_dir.path())?;
 
     let config = create_test_config();
-    let (_temp_template_dir, template_path) = rust_bucket::templates::extract_to_temp().unwrap();
-    rust_bucket::generator::render(&template_path, temp_dir.path(), &config, false).unwrap();
+    let (_temp_template_dir, template_path) = rust_bucket::templates::extract_to_temp()?;
+    rust_bucket::generator::render(&template_path, temp_dir.path(), &config, false)?;
 
     // Check each generated file has version comment or stamp
     let files_to_check = vec![
@@ -280,7 +283,7 @@ fn test_version_stamp_in_generated_files() {
         let full_path = temp_dir.path().join(file_path);
         assert!(full_path.exists(), "File should exist: {}", file_path);
 
-        let content = fs::read_to_string(&full_path).unwrap();
+        let content = fs::read_to_string(&full_path)?;
 
         // Verify version stamp exists somewhere in the file
         assert!(
@@ -308,4 +311,5 @@ fn test_version_stamp_in_generated_files() {
             );
         }
     }
+    Ok(())
 }

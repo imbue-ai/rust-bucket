@@ -187,7 +187,7 @@ mod tests {
     use std::fs;
     use tempfile::TempDir;
 
-    fn create_test_rust_crate(path: &Path) {
+    fn create_test_rust_crate(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
         // Create Cargo.toml
         fs::write(
             path.join("Cargo.toml"),
@@ -196,21 +196,21 @@ name = "test-crate"
 version = "0.1.0"
 edition = "2021"
 "#,
-        )
-        .unwrap();
+        )?;
 
         // Create .git directory
-        fs::create_dir(path.join(".git")).unwrap();
+        fs::create_dir(path.join(".git"))?;
 
         // Create src directory with lib.rs
         let src_dir = path.join("src");
-        fs::create_dir(&src_dir).unwrap();
-        fs::write(src_dir.join("lib.rs"), "// test lib\n").unwrap();
+        fs::create_dir(&src_dir)?;
+        fs::write(src_dir.join("lib.rs"), "// test lib\n")?;
+        Ok(())
     }
 
     #[test]
-    fn test_apply_init_not_rust_crate() {
-        let temp_dir = TempDir::new().unwrap();
+    fn test_apply_init_not_rust_crate() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = TempDir::new()?;
         let result = apply_init(temp_dir.path(), false);
 
         assert!(result.is_err());
@@ -218,18 +218,18 @@ edition = "2021"
             matches!(result.unwrap_err(), ApplyError::NotRustCrate),
             "Expected NotRustCrate error"
         );
+        Ok(())
     }
 
     #[test]
-    fn test_apply_init_not_git_repo() {
-        let temp_dir = TempDir::new().unwrap();
+    fn test_apply_init_not_git_repo() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = TempDir::new()?;
 
         // Create Cargo.toml but not .git
         fs::write(
             temp_dir.path().join("Cargo.toml"),
             "[package]\nname = \"test\"",
-        )
-        .unwrap();
+        )?;
 
         let result = apply_init(temp_dir.path(), false);
 
@@ -238,15 +238,16 @@ edition = "2021"
             matches!(result.unwrap_err(), ApplyError::NotGitRepo),
             "Expected NotGitRepo error"
         );
+        Ok(())
     }
 
     #[test]
-    fn test_apply_init_conflicts_without_force() {
-        let temp_dir = TempDir::new().unwrap();
-        create_test_rust_crate(temp_dir.path());
+    fn test_apply_init_conflicts_without_force() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = TempDir::new()?;
+        create_test_rust_crate(temp_dir.path())?;
 
         // Create a conflicting file
-        fs::write(temp_dir.path().join("AGENTS.md"), "existing content").unwrap();
+        fs::write(temp_dir.path().join("AGENTS.md"), "existing content")?;
 
         let result = apply_init(temp_dir.path(), false);
 
@@ -261,8 +262,9 @@ edition = "2021"
             assert!(
                 conflicts
                     .iter()
-                    .any(|p| p.file_name().unwrap() == "AGENTS.md")
+                    .any(|p| p.file_name().is_some_and(|n| n == "AGENTS.md"))
             );
         }
+        Ok(())
     }
 }

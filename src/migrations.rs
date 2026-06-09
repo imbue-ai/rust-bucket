@@ -76,37 +76,42 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_migrations_between_includes_060() {
+    fn test_migrations_between_includes_060() -> Result<(), Box<dyn std::error::Error>> {
         let from = Version::new(0, 5, 0);
         let to = Version::new(0, 6, 0);
-        let result = migrations_between(&from, &to).unwrap();
+        let result = migrations_between(&from, &to)?;
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].version, Version::new(0, 6, 0));
+        Ok(())
     }
 
     #[test]
-    fn test_migrations_between_same_version_returns_empty() {
+    fn test_migrations_between_same_version_returns_empty() -> Result<(), Box<dyn std::error::Error>>
+    {
         let v = Version::new(0, 6, 0);
-        let result = migrations_between(&v, &v).unwrap();
+        let result = migrations_between(&v, &v)?;
         assert!(result.is_empty());
+        Ok(())
     }
 
     #[test]
-    fn test_migrations_between_reversed_returns_empty() {
+    fn test_migrations_between_reversed_returns_empty() -> Result<(), Box<dyn std::error::Error>> {
         let from = Version::new(0, 7, 0);
         let to = Version::new(0, 5, 0);
-        let result = migrations_between(&from, &to).unwrap();
+        let result = migrations_between(&from, &to)?;
         assert!(result.is_empty());
+        Ok(())
     }
 
     #[test]
-    fn test_migration_content_is_non_empty() {
+    fn test_migration_content_is_non_empty() -> Result<(), Box<dyn std::error::Error>> {
         let from = Version::new(0, 5, 0);
         let to = Version::new(0, 6, 0);
-        let result = migrations_between(&from, &to).unwrap();
+        let result = migrations_between(&from, &to)?;
         assert!(!result.is_empty());
         for migration in &result {
             assert!(!migration.instructions.is_empty());
         }
+        Ok(())
     }
 }

@@ -116,17 +116,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_extract_to_temp() {
-        let result = extract_to_temp();
-        assert!(
-            result.is_ok(),
-            "Failed to extract templates: {:?}",
-            result.err()
-        );
-
-        let (_temp_dir, temp_path) = result.unwrap();
+    fn test_extract_to_temp() -> Result<(), Box<dyn std::error::Error>> {
+        let (_temp_dir, temp_path) = extract_to_temp()?;
         assert!(temp_path.exists());
         assert!(temp_path.is_dir());
+        Ok(())
     }
 
     #[test]
