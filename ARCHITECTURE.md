@@ -65,6 +65,18 @@ Apply strategy:
 - `init`: generate with overwrite disabled and fail fast on conflicts.
 - `update`: generate with overwrite enabled to replace managed files.
 
+#### Seed files vs managed files
+Rust-Bucket distinguishes two categories of generated file, with different overwrite policies on every `apply`:
+
+- **Managed files** (`templates::managed_files()`): owned by Rust-Bucket. They are re-rendered and **overwritten unconditionally on every apply**, so local edits to them do not survive an update.
+- **Seed files**: written into the target **only if absent**, and **never overwritten on re-apply**. Once seeded, the project owns the file and may customize it freely; seeding is safe to repeat because existing files are left byte-for-byte untouched.
+
+The current seed files are:
+- `STYLE_GUIDE.md` (via `generator::seed_style_guide`).
+- `ratchets.toml` (via `generator::seed_files`, registered in `templates::seed_files()`).
+
+`ratchets.toml` seeds the project's [`imbue-ai/ratchets`](https://github.com/imbue-ai/ratchets) configuration so the `ratchets check` gate (whose binary is installed via the devcontainer Dockerfile) has a config to read. Because it is seed-only, the project can then tune its ratchets without losing changes on the next apply.
+
 ### 5) Validation / verification
 Post-generation verification should be “one command away”:
 - `cargo fmt --check`

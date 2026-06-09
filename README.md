@@ -35,13 +35,19 @@ If we have run this before, it updates the managed file set.
 The initial "managed" set is expected to include:
 - `AGENTS.md`
 - `CLAUDE.md`
-- `STYLE_GUIDE.md`
 - `TESTING.md`
 - `.claude/agents/*.md` (coordinator, coding, judge, tidy, reflection)
 - `.config/nextest.toml`
 - `deny.toml` (if enabled)
 - `rustfmt.toml` / clippy configuration (as needed)
 - devcontainer stubs for Sculptor (placeholders acceptable)
+
+Managed files are **overwritten on every apply**, so they should not be edited by hand.
+
+## Seed file set
+Seed files are written **only if absent** and are **never overwritten on re-apply**. After the first apply the project owns them and may customize them freely. The current seed files are:
+- `ratchets.toml` — initial `imbue-ai/ratchets` config so the `ratchets check` gate has something to read.
+- `STYLE_GUIDE.md` — starting project style guide.
 
 ## Template engine (v1)
 Rust-Bucket uses the Liquid template language (via `cargo-generate` as a library) to render embedded templates into the target repo.
