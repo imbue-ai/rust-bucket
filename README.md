@@ -50,7 +50,7 @@ Seed files (`STYLE_GUIDE.md`, `ratchets.toml`) are written **only if absent** an
 - `STYLE_GUIDE.md` — starting project style guide.
 
 ## Template engine (v1)
-Rust-Bucket uses the Liquid template language (via `cargo-generate` as a library) to render embedded templates into the target repo.
+Rust-Bucket uses the Liquid template language, via the `liquid` crate used as a library, to render embedded templates into the target repo.
 
 No hooks in v1.
 
