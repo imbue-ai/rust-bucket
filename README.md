@@ -45,7 +45,7 @@ The initial "managed" set is expected to include:
 Managed files are **overwritten on every apply**, so they should not be edited by hand.
 
 ## Seed file set
-Seed files are written **only if absent** and are **never overwritten on re-apply**. After the first apply the project owns them and may customize them freely. The current seed files are:
+Seed files (`STYLE_GUIDE.md`, `ratchets.toml`) are written **only if absent** and are **never overwritten on re-apply**. If a seed file already exists it is left untouched, so the project can customize it freely. The current seed files are:
 - `ratchets.toml` — initial `imbue-ai/ratchets` config so the `ratchets check` gate has something to read.
 - `STYLE_GUIDE.md` — starting project style guide.
 
