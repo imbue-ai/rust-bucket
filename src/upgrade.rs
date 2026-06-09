@@ -115,34 +115,35 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    fn test_upgrade_not_rust_crate() {
-        let temp_dir = TempDir::new().unwrap();
+    fn test_upgrade_not_rust_crate() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = TempDir::new()?;
         let result = run_upgrade(temp_dir.path());
         assert!(matches!(result.unwrap_err(), UpgradeError::NotRustCrate));
+        Ok(())
     }
 
     #[test]
-    fn test_upgrade_not_git_repo() {
-        let temp_dir = TempDir::new().unwrap();
+    fn test_upgrade_not_git_repo() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = TempDir::new()?;
         std::fs::write(
             temp_dir.path().join("Cargo.toml"),
             "[package]\nname = \"test\"",
-        )
-        .unwrap();
+        )?;
         let result = run_upgrade(temp_dir.path());
         assert!(matches!(result.unwrap_err(), UpgradeError::NotGitRepo));
+        Ok(())
     }
 
     #[test]
-    fn test_upgrade_not_initialized() {
-        let temp_dir = TempDir::new().unwrap();
+    fn test_upgrade_not_initialized() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = TempDir::new()?;
         std::fs::write(
             temp_dir.path().join("Cargo.toml"),
             "[package]\nname = \"test\"",
-        )
-        .unwrap();
-        std::fs::create_dir(temp_dir.path().join(".git")).unwrap();
+        )?;
+        std::fs::create_dir(temp_dir.path().join(".git"))?;
         let result = run_upgrade(temp_dir.path());
         assert!(matches!(result.unwrap_err(), UpgradeError::NotInitialized));
+        Ok(())
     }
 }
