@@ -6,3 +6,6 @@ target/
 .beads/.write.lock
 .beads/beads.db
 .beads/beads.db-wal
+
+# Editor backup files
+*~
