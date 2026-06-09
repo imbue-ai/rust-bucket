@@ -105,7 +105,10 @@ pub fn managed_files() -> Vec<&'static str> {
 /// appear in `managed_files()`, and `render()` skips them so they are written
 /// only via the seed-if-missing path.
 pub fn seed_files() -> Vec<(&'static str, &'static str)> {
-    vec![("ratchets.toml.liquid", "ratchets.toml")]
+    vec![
+        ("ratchets.toml.liquid", "ratchets.toml"),
+        ("STYLE_GUIDE.md.liquid", "STYLE_GUIDE.md"),
+    ]
 }
 
 #[cfg(test)]
@@ -149,9 +152,22 @@ mod tests {
     }
 
     #[test]
+    fn test_seed_files_registers_style_guide() {
+        let seeds = seed_files();
+        assert!(seeds.contains(&("STYLE_GUIDE.md.liquid", "STYLE_GUIDE.md")));
+    }
+
+    #[test]
     fn test_ratchets_toml_not_managed() {
         let managed = managed_files();
         assert!(!managed.contains(&"ratchets.toml"));
+        assert_eq!(managed.len(), 16);
+    }
+
+    #[test]
+    fn test_style_guide_not_managed() {
+        let managed = managed_files();
+        assert!(!managed.contains(&"STYLE_GUIDE.md"));
         assert_eq!(managed.len(), 16);
     }
 }

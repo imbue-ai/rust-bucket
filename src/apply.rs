@@ -109,8 +109,6 @@ pub fn apply_init(target_dir: &Path, force: bool) -> Result<ApplyResult, ApplyEr
 
     generator::ensure_gitignore(target_dir)?;
 
-    generator::seed_style_guide(target_dir)?;
-
     let seeded = generator::seed_files(&temp_path, target_dir, &config)?;
     files_generated.extend(seeded);
 
@@ -171,8 +169,6 @@ pub fn apply_update(target_dir: &Path) -> Result<ApplyResult, ApplyError> {
     files_generated.push(claude_symlink);
 
     generator::ensure_gitignore(target_dir)?;
-
-    generator::seed_style_guide(target_dir)?;
 
     let seeded = generator::seed_files(&temp_path, target_dir, &config)?;
     files_generated.extend(seeded);
