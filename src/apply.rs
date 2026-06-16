@@ -51,6 +51,29 @@ pub enum ApplyError {
     CliError(#[from] cli::CliError),
 }
 
+/// Derive the project name for a target repository.
+///
+/// Prefers the `[package].name` declared in the target's `Cargo.toml`. Falls
+/// back to the target directory's file name when the manifest has no package
+/// name (e.g. a virtual workspace root) or cannot be parsed.
+fn derive_project_name(target_dir: &Path) -> String {
+    let cargo_toml = target_dir.join("Cargo.toml");
+    if let Ok(contents) = std::fs::read_to_string(&cargo_toml)
+        && let Ok(value) = contents.parse::<toml::Value>()
+        && let Some(name) = value
+            .get("package")
+            .and_then(|package| package.get("name"))
+            .and_then(|name| name.as_str())
+    {
+        return name.to_string();
+    }
+
+    target_dir
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "project".to_string())
+}
+
 /// Apply rust-bucket to a target directory for the first time.
 ///
 /// Implements the first-time flow described in ARCHITECTURE.md.
@@ -94,7 +117,7 @@ pub fn apply_init(target_dir: &Path, force: bool) -> Result<ApplyResult, ApplyEr
     let config = Config {
         rust_bucket_version: env!("CARGO_PKG_VERSION").to_string(),
         test_timeout,
-        project_name: "Rust-Bucket".to_string(),
+        project_name: derive_project_name(target_dir),
     };
 
     let config_path = target_dir.join("rust-bucket.toml");
@@ -205,6 +228,31 @@ edition = "2021"
         let src_dir = path.join("src");
         fs::create_dir(&src_dir)?;
         fs::write(src_dir.join("lib.rs"), "// test lib\n")?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_derive_project_name_from_cargo_toml() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = TempDir::new()?;
+        create_test_rust_crate(temp_dir.path())?;
+
+        assert_eq!(derive_project_name(temp_dir.path()), "test-crate");
+        Ok(())
+    }
+
+    #[test]
+    fn test_derive_project_name_falls_back_to_dir_name() -> Result<(), Box<dyn std::error::Error>> {
+        let temp_dir = TempDir::new()?;
+        let workspace_root = temp_dir.path().join("my-workspace");
+        fs::create_dir(&workspace_root)?;
+
+        // Workspace manifest without a [package] section.
+        fs::write(
+            workspace_root.join("Cargo.toml"),
+            "[workspace]\nmembers = [\"crate-a\"]\n",
+        )?;
+
+        assert_eq!(derive_project_name(&workspace_root), "my-workspace");
         Ok(())
     }
 
