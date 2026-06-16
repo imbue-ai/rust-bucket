@@ -10,6 +10,7 @@ pub enum VerifyStep {
     Format,
     Clippy,
     Test,
+    Ratchets,
 }
 
 /// Result of running a verification step
@@ -26,6 +27,7 @@ pub struct VerifyReport {
     pub format: StepResult,
     pub clippy: StepResult,
     pub test: StepResult,
+    pub ratchets: StepResult,
 }
 
 /// Errors that can occur during verification
@@ -44,6 +46,7 @@ impl VerifyReport {
         matches!(self.format, StepResult::Pass | StepResult::Skip(_))
             && matches!(self.clippy, StepResult::Pass | StepResult::Skip(_))
             && matches!(self.test, StepResult::Pass | StepResult::Skip(_))
+            && matches!(self.ratchets, StepResult::Pass | StepResult::Skip(_))
     }
 }
 
@@ -52,11 +55,13 @@ pub fn run_all(target_dir: &Path) -> Result<VerifyReport, VerifyError> {
     let format = run_format_check(target_dir)?;
     let clippy = run_clippy(target_dir)?;
     let test = run_tests(target_dir)?;
+    let ratchets = run_ratchets(target_dir)?;
 
     Ok(VerifyReport {
         format,
         clippy,
         test,
+        ratchets,
     })
 }
 
@@ -127,5 +132,63 @@ fn run_tests(target_dir: &Path) -> Result<StepResult, VerifyError> {
             // cargo-nextest not installed
             Ok(StepResult::Skip("cargo-nextest not installed".to_string()))
         }
+    }
+}
+
+/// Run `ratchets check`
+///
+/// Skips (rather than fails) when the `ratchets` binary is not on `PATH`, since
+/// it is installed separately from cargo and may be absent outside the
+/// devcontainer.
+fn run_ratchets(target_dir: &Path) -> Result<StepResult, VerifyError> {
+    let output = match Command::new("ratchets")
+        .arg("check")
+        .current_dir(target_dir)
+        .output()
+    {
+        Ok(output) => output,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(StepResult::Skip("ratchets not installed".to_string()));
+        }
+        Err(e) => return Err(VerifyError::Io(e)),
+    };
+
+    if output.status.success() {
+        Ok(StepResult::Pass)
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let message = format!("{}\n{}", stdout, stderr).trim().to_string();
+        Ok(StepResult::Fail(message))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_success_requires_ratchets() {
+        let report = VerifyReport {
+            format: StepResult::Pass,
+            clippy: StepResult::Pass,
+            test: StepResult::Pass,
+            ratchets: StepResult::Fail("budget exceeded".to_string()),
+        };
+        assert!(
+            !report.is_success(),
+            "a failing ratchets step must fail the report"
+        );
+    }
+
+    #[test]
+    fn test_is_success_allows_skipped_ratchets() {
+        let report = VerifyReport {
+            format: StepResult::Pass,
+            clippy: StepResult::Pass,
+            test: StepResult::Pass,
+            ratchets: StepResult::Skip("ratchets not installed".to_string()),
+        };
+        assert!(report.is_success(), "a skipped ratchets step must not fail");
     }
 }

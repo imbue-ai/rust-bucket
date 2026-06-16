@@ -32,15 +32,10 @@ pub struct Config {
     pub project_name: String,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            rust_bucket_version: env!("CARGO_PKG_VERSION").to_string(),
-            test_timeout: 120,
-            project_name: env!("CARGO_PKG_NAME").to_string(),
-        }
-    }
-}
+// `Config` intentionally has no `Default`: `project_name` is meaningful only
+// relative to a target repository, so it must always be supplied explicitly
+// (see `apply::derive_project_name`). A crate-name-derived default would
+// silently mislabel every target as the rust-bucket crate itself.
 
 impl Config {
     /// Load configuration from a TOML file
@@ -68,14 +63,6 @@ impl Config {
 mod tests {
     use super::*;
     use std::path::PathBuf;
-
-    #[test]
-    fn test_default_config() {
-        let config = Config::default();
-        assert_eq!(config.rust_bucket_version, env!("CARGO_PKG_VERSION"));
-        assert_eq!(config.test_timeout, 120);
-        assert_eq!(config.project_name, env!("CARGO_PKG_NAME"));
-    }
 
     #[test]
     fn test_save_and_load_roundtrip() -> Result<(), Box<dyn std::error::Error>> {
