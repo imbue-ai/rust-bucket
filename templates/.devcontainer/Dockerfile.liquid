@@ -18,9 +18,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN cargo install cargo-nextest --locked
 
 # Install beads_rust task tracker (required per AGENTS.md)
-# br must be available on PATH
-# See: https://github.com/Dicklesworthstone/beads_rust
-RUN cargo install --git https://github.com/Dicklesworthstone/beads_rust.git
+# br must be available on PATH.
+# Install a checksum-verified prebuilt binary instead of building from source:
+# br's fsqlite backend uses nightly-only Rust features, so no published br
+# version compiles on the stable toolchain. Upstream ships checksummed prebuilt
+# binaries per release, which we pin for reproducibility.
+# See: https://github.com/Dicklesworthstone/beads_rust/releases
+ARG BR_VERSION=0.2.15
+RUN set -eux; \
+    arch="$(dpkg --print-architecture)"; \
+    case "$arch" in \
+      amd64) br_arch="linux_amd64" ;; \
+      arm64) br_arch="linux_arm64" ;; \
+      *) echo "unsupported arch: $arch" >&2; exit 1 ;; \
+    esac; \
+    base="https://github.com/Dicklesworthstone/beads_rust/releases/download/v${BR_VERSION}"; \
+    curl -fsSL -o /tmp/br.tar.gz "${base}/br-${BR_VERSION}-${br_arch}.tar.gz"; \
+    curl -fsSL -o /tmp/br.sha "${base}/br-${BR_VERSION}-${br_arch}.tar.gz.sha256"; \
+    expected="$(awk '{print $1}' /tmp/br.sha)"; \
+    actual="$(sha256sum /tmp/br.tar.gz | awk '{print $1}')"; \
+    [ "$expected" = "$actual" ] || { echo "br checksum mismatch: $expected != $actual" >&2; exit 1; }; \
+    tar -xzf /tmp/br.tar.gz -C /usr/local/bin br; \
+    rm -f /tmp/br.tar.gz /tmp/br.sha; \
+    br --version
 
 # Ensure all tool binaries are on PATH
 ENV PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
@@ -39,7 +59,7 @@ WORKDIR /workspace
 RUN echo "=== Verifying installations ===" && \
     cargo --version && \
     cargo-nextest --version && \
-    (br --version || echo "Warning: br not in PATH yet, but continuing...") && \
+    br --version && \
     ratchets --version && \
     cargo-deny --version && \
     echo "=== All verifications complete ==="

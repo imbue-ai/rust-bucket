@@ -73,6 +73,7 @@ pub fn required_gitignore_lines() -> Vec<&'static str> {
         ".beads/.br_history/",
         ".beads/beads.db",
         ".beads/beads.db-wal",
+        ".beads/last-touched",
     ]
 }
 

@@ -635,7 +635,7 @@ mod tests {
     fn test_ensure_gitignore_creates_file_when_missing() -> Result<(), Box<dyn std::error::Error>> {
         let temp_dir = TempDir::new()?;
         let added = ensure_gitignore(temp_dir.path())?;
-        assert_eq!(added.len(), 3);
+        assert_eq!(added.len(), 4);
         let content = fs::read_to_string(temp_dir.path().join(".gitignore"))?;
         assert!(content.contains(".beads/.br_history/"));
         assert!(content.contains(".beads/beads.db-wal"));
@@ -647,7 +647,7 @@ mod tests {
         let temp_dir = TempDir::new()?;
         fs::write(temp_dir.path().join(".gitignore"), "target/\n")?;
         let added = ensure_gitignore(temp_dir.path())?;
-        assert_eq!(added.len(), 3);
+        assert_eq!(added.len(), 4);
         let content = fs::read_to_string(temp_dir.path().join(".gitignore"))?;
         assert!(content.starts_with("target/\n"));
         assert!(content.contains("# beads_rust (managed by rust-bucket)"));
@@ -660,7 +660,7 @@ mod tests {
         let temp_dir = TempDir::new()?;
         fs::write(
             temp_dir.path().join(".gitignore"),
-            "target/\n.beads/.br_history/\n.beads/beads.db\n.beads/beads.db-wal\n",
+            "target/\n.beads/.br_history/\n.beads/beads.db\n.beads/beads.db-wal\n.beads/last-touched\n",
         )?;
         let added = ensure_gitignore(temp_dir.path())?;
         assert!(added.is_empty());
