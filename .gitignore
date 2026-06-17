@@ -9,3 +9,6 @@ target/
 
 # Editor backup files
 *~
+
+# beads_rust (managed by rust-bucket)
+.beads/last-touched
