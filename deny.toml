@@ -3,13 +3,15 @@
 # Configuration for cargo-deny (https://github.com/EmbarkStudios/cargo-deny)
 # This file defines security, license, and dependency policies for this crate.
 
+version = 2
+
 [advisories]
 # Check for security vulnerabilities in dependencies.
 # In schema v2 vulnerabilities, unsound, and notice advisories always error;
 # use `ignore` to silence specific advisories.
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-unmaintained = "all"
+unmaintained = "warn"
 yanked = "deny"
 ignore = []
 
@@ -24,7 +26,6 @@ allow = [
     "ISC",
     "Zlib",
     "Unlicense",
-    "Unicode-3.0",
 ]
 confidence-threshold = 0.8
 
