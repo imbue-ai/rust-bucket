@@ -54,6 +54,7 @@ fn print_results(result: &apply::ApplyResult) {
     print_step_result("Format check", &result.verification.format);
     print_step_result("Clippy", &result.verification.clippy);
     print_step_result("Tests", &result.verification.test);
+    print_step_result("Ratchets", &result.verification.ratchets);
 
     if result.verification.is_success() {
         println!("\n✓ All checks passed!");
