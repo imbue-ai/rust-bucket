@@ -2,8 +2,7 @@
 
 FROM rust:1.92-bookworm
 
-# Cache buster - increment to force rebuild: v3
-ARG CACHE_BUST=3
+ARG CACHE_BUST=4
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -29,6 +28,10 @@ ENV PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
 # Installs ratchets (pinned) for validating project ratchets
 RUN cargo install ratchets@0.3.1
 
+# Installs cargo-deny (pinned) for security, license, and dependency policy checks
+# Version must support the deny.toml schema v2 (cargo-deny >= 0.14)
+RUN cargo install cargo-deny@0.19.9 --locked
+
 # Set working directory
 WORKDIR /workspace
 
@@ -38,6 +41,7 @@ RUN echo "=== Verifying installations ===" && \
     cargo-nextest --version && \
     (br --version || echo "Warning: br not in PATH yet, but continuing...") && \
     ratchets --version && \
+    cargo-deny --version && \
     echo "=== All verifications complete ==="
 
 # Default command
