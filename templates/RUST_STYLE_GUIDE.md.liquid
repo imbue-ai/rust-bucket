@@ -25,8 +25,7 @@ This project is "typechecker-first": prefer designs the compiler can validate st
   - `foo.rs` with submodules in `foo/…`
 
 ## Error handling (no panics)
-- Do not use `unwrap()` / `expect()` in production code.
-  - In tests, they may be acceptable when they improve readability and failure messages.
+- No `unwrap()`, `expect()`, or `panic!()` in any code, including tests. The only exception is a path where panicking is the only correct behaviour — an unrecoverable invariant violation, or a test asserting a panic. Everywhere else, return `Result` and use `?`.
 - Prefer typed errors and `Result`.
 - Prefer fallible conversions: `TryFrom` / `TryInto` over `as` casts when failure is possible.
 

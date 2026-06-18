@@ -18,7 +18,7 @@
 - **Rendering engine:** the `liquid` crate used as a library, driven by values from Rust-Bucket's prompt layer.
 - **Templates location:** embedded into the binary via `rust-embed`, extracted at runtime to a temp directory.
 - **State file:** `rust-bucket.toml` written into the target repo.
-- **Config contents (v1):** Only the test timeout value (and a version stamp comment). More fields will be added later.
+- **Config contents:** persisted in `rust-bucket.toml`; see the Config component below for the fields it stores.
 - **Init overwrite policy:** refuse if any managed file exists; offer `--force` flag to override.
 - **Update overwrite policy:** overwrite all managed files unconditionally.
 - **Target README policy:** never touch `README.md` or `ARCHITECTURE.md` (just don't generate them).
