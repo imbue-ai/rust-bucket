@@ -1,14 +1,12 @@
 # Build artifacts
 target/
 
-# beads_rust junk
-.beads/.br_history/
-.beads/.write.lock
-.beads/beads.db
-.beads/beads.db-wal
-
 # Editor backup files
 *~
 
 # beads_rust (managed by rust-bucket)
+.beads/.br_history/
+.beads/.write.lock
+.beads/beads.db
+.beads/beads.db-wal
 .beads/last-touched
