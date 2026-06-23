@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
 
 use clap::Parser;
-use rust_bucket::{apply, cli, generator, verify};
+use rust_bucket::migrations::NO_MIGRATIONS_MESSAGE;
+use rust_bucket::{apply, cli, generator, show_migration, verify};
 use std::process;
 
 fn main() {
@@ -39,6 +40,18 @@ fn run() -> Result<i32, Box<dyn std::error::Error>> {
             } else {
                 Ok(1)
             }
+        }
+        cli::Commands::ShowMigration { from, to } => {
+            let target_dir = std::env::current_dir()?;
+
+            match show_migration::show_migration(&target_dir, from, to)? {
+                show_migration::ShowMigrationOutcome::Guide(text) => println!("{}", text),
+                show_migration::ShowMigrationOutcome::NoMigrations => {
+                    println!("{}", NO_MIGRATIONS_MESSAGE)
+                }
+            }
+
+            Ok(0)
         }
     }
 }
