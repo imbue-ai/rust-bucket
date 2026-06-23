@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
 use clap::Parser;
-use rust_bucket::migrations::NO_MIGRATIONS_MESSAGE;
+use rust_bucket::migrations::{self, NO_MIGRATIONS_MESSAGE};
 use rust_bucket::{apply, cli, generator, show_migration, verify};
 use std::process;
 
@@ -73,6 +73,29 @@ fn print_results(result: &apply::ApplyResult) {
         println!("\n✓ All checks passed!");
     } else {
         println!("\n✗ Some checks failed. Please review the output above.");
+    }
+
+    print_migration_footer(result);
+}
+
+/// Print the migration footer following the verification summary.
+///
+/// The footer is purely informational and never influences the process exit
+/// code. It always reports migration status, then, when a prior version was
+/// recorded (i.e. this was an update rather than a first-time init), prints a
+/// hint for re-viewing the same instructions later.
+fn print_migration_footer(result: &apply::ApplyResult) {
+    if result.migrations.is_empty() {
+        println!("\n{}", NO_MIGRATIONS_MESSAGE);
+    } else {
+        println!("\n{}", migrations::render_migrations(&result.migrations));
+    }
+
+    if let Some(old_version) = &result.old_version {
+        println!(
+            "\nTo view these again, run: rust-bucket show-migration --from {}",
+            old_version
+        );
     }
 }
 
