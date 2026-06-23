@@ -19,7 +19,7 @@ If the first time, sets up the current crate.
 - Prompts you for a small set of decisions (interactive by default).
 - Writes `rust-bucket.toml` into the current repo to persist those decisions.
 - Generates the managed file set (docs, lint configs, testing configs, devcontainer stubs).
-- **Refuses to run if any managed file already exists.**
+- **Refuses to run if any managed file already exists** (override with `--force`).
 
 If we have run this before, it updates the managed file set.
 
@@ -31,21 +31,13 @@ If we have run this before, it updates the managed file set.
 
 > Rust-Bucket never edits a target repo’s `README.md` or `ARCHITECTURE.md`
 
-## Managed file set (v1)
-The initial "managed" set is expected to include:
-- `AGENTS.md`
-- `CLAUDE.md`
-- `TESTING.md`
-- `.claude/agents/*.md` (coordinator, coding, judge, tidy, reflection)
-- `.config/nextest.toml`
-- `deny.toml` (if enabled)
-- `rustfmt.toml` / clippy configuration (as needed)
-- devcontainer stubs for Sculptor (placeholders acceptable)
+## Managed file set
+The authoritative list of managed files is defined in code, as `managed_files()` in `src/templates.rs` — consult it there rather than maintaining a copy here that drifts. Each entry maps to a template under `templates/`.
 
-Managed files are **overwritten on every apply**, so they should not be edited by hand.
+Managed files are **overwritten on every apply**, so they must not be edited by hand; edit the corresponding template under `templates/` instead.
 
 ## Seed file set
-Seed files (`STYLE_GUIDE.md`, `ratchets.toml`) are written **only if absent** and are **never overwritten on re-apply**. If a seed file already exists it is left untouched, so the project can customize it freely. The current seed files are:
+Seed files are written **only if absent** and are **never overwritten on re-apply**, so the project can customize them freely. The authoritative list is defined in code, as `seed_files()` in `src/templates.rs`. It currently seeds:
 - `ratchets.toml` — initial `imbue-ai/ratchets` config so the `ratchets check` gate has something to read.
 - `STYLE_GUIDE.md` — starting project style guide.
 
