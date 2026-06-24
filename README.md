@@ -29,7 +29,20 @@ If we have run this before, it updates the managed file set.
 - **Overwrites all managed files** with the current template versions.
 - Does not attempt to diff or dry-run in v1.
 
+After verification, `apply` prints a migration footer: the embedded guides for the version range it just moved across (or `No upgrade instructions`), plus a hint to re-view them via `rust-bucket show-migration --from <old-version>`.
+
+`apply` is **forward-only**: it refuses (errors, non-zero exit, **no changes**) when the running binary is older than the version recorded in `rust-bucket.toml`.
+
 > Rust-Bucket never edits a target repo’s `README.md` or `ARCHITECTURE.md`
+
+### `rust-bucket show-migration`
+Prints embedded migration guides for a version range. Display-only — it performs no file generation.
+
+- `--from` defaults to the version recorded in `rust-bucket.toml`; `--to` defaults to the running binary version.
+- With both flags it works anywhere (no initialized repo required); a bare invocation outside an initialized repo is an error.
+- Versions must be full `X.Y.Z` semver.
+- Guide text and a `No upgrade instructions` message print to stdout (exit 0).
+- Errors (`--from` greater than `--to`, an unparseable version, or not-initialized) go to stderr with a non-zero exit.
 
 ## Managed file set
 The authoritative list of managed files is defined in code, as `managed_files()` in `src/templates.rs` — consult it there rather than maintaining a copy here that drifts. Each entry maps to a template under `templates/`.
