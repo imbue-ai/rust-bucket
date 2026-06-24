@@ -3,8 +3,10 @@
 use crate::cli;
 use crate::config::{Config, ConfigError};
 use crate::generator::{self, GeneratorError};
+use crate::migrations::{self, Migration, MigrationError};
 use crate::templates::{self, TemplateError};
 use crate::verify::{self, VerifyError, VerifyReport};
+use semver::Version;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -13,6 +15,15 @@ use thiserror::Error;
 pub struct ApplyResult {
     pub files_generated: Vec<PathBuf>,
     pub verification: VerifyReport,
+    /// Migrations spanning the version range crossed by this apply.
+    ///
+    /// Empty for a first-time init (no prior version) and for updates that do
+    /// not cross a version with recorded upgrade instructions.
+    pub migrations: Vec<Migration>,
+    /// The version recorded in rust-bucket.toml before this apply bumped it.
+    ///
+    /// `None` for a first-time init, where no prior version exists.
+    pub old_version: Option<String>,
 }
 
 /// Errors that can occur during the apply operation
@@ -49,6 +60,23 @@ pub enum ApplyError {
     /// CLI interaction error
     #[error("CLI error: {0}")]
     CliError(#[from] cli::CliError),
+
+    /// Migration lookup error
+    #[error("Migration error: {0}")]
+    MigrationError(#[from] MigrationError),
+
+    /// A recorded or binary version string could not be parsed as full semver.
+    #[error("Invalid version '{0}': {1}")]
+    VersionParse(String, semver::Error),
+
+    /// The running binary is older than the version recorded in rust-bucket.toml.
+    ///
+    /// Apply is forward-only: downgrading would regenerate managed files from
+    /// stale templates, so the operation is refused before anything is mutated.
+    #[error(
+        "Downgrade not supported: rust-bucket.toml was written by v{recorded}, but this binary is v{binary}. Upgrade the rust-bucket binary to v{recorded} or newer."
+    )]
+    DowngradeNotSupported { recorded: Version, binary: Version },
 }
 
 /// Derive the project name for a target repository.
@@ -72,6 +100,43 @@ fn derive_project_name(target_dir: &Path) -> String {
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_else(|| "project".to_string())
+}
+
+/// Resolved version transition for an update, computed before any mutation.
+#[derive(Debug)]
+struct MigrationPlan {
+    /// Migrations spanning `(recorded, binary]`, sorted ascending.
+    migrations: Vec<Migration>,
+}
+
+/// Parse the recorded and binary versions, enforce forward-only upgrades, and
+/// collect the migrations crossed by the transition.
+///
+/// This performs no file mutation, so it can run before the stamp is bumped and
+/// before any templates are regenerated. Returns [`ApplyError::DowngradeNotSupported`]
+/// when the binary is older than the recorded version.
+fn plan_migrations(recorded: &str, binary: &str) -> Result<MigrationPlan, ApplyError> {
+    let recorded_version =
+        Version::parse(recorded).map_err(|e| ApplyError::VersionParse(recorded.to_string(), e))?;
+    let binary_version =
+        Version::parse(binary).map_err(|e| ApplyError::VersionParse(binary.to_string(), e))?;
+
+    if binary_version < recorded_version {
+        return Err(ApplyError::DowngradeNotSupported {
+            recorded: recorded_version,
+            binary: binary_version,
+        });
+    }
+
+    if recorded_version != binary_version {
+        eprintln!(
+            "Note: Config was last generated with rust-bucket v{}, updating to v{}",
+            recorded_version, binary_version
+        );
+    }
+
+    let migrations = migrations::migrations_between(&recorded_version, &binary_version)?;
+    Ok(MigrationPlan { migrations })
 }
 
 /// Apply rust-bucket to a target directory for the first time.
@@ -140,6 +205,8 @@ pub fn apply_init(target_dir: &Path, force: bool) -> Result<ApplyResult, ApplyEr
     Ok(ApplyResult {
         files_generated,
         verification,
+        migrations: Vec::new(),
+        old_version: None,
     })
 }
 
@@ -157,6 +224,8 @@ pub fn apply_init(target_dir: &Path, force: bool) -> Result<ApplyResult, ApplyEr
 /// - The target is not a Rust crate (no Cargo.toml)
 /// - The target is not a git repository (no .git/)
 /// - The rust-bucket.toml config file cannot be loaded
+/// - Either the recorded or binary version is not valid semver
+/// - The binary is older than the recorded version (forward-only; nothing is mutated)
 /// - Any step in the process fails (config save, template extraction, rendering, verification)
 pub fn apply_update(target_dir: &Path) -> Result<ApplyResult, ApplyError> {
     let cargo_toml = target_dir.join("Cargo.toml");
@@ -172,15 +241,14 @@ pub fn apply_update(target_dir: &Path) -> Result<ApplyResult, ApplyError> {
     let config_path = target_dir.join("rust-bucket.toml");
     let mut config = Config::load(&config_path)?;
 
-    let current_version = env!("CARGO_PKG_VERSION");
-    if config.rust_bucket_version != current_version {
-        eprintln!(
-            "Note: Config was last generated with rust-bucket v{}, updating to v{}",
-            config.rust_bucket_version, current_version
-        );
-    }
+    let old_version_str = config.rust_bucket_version.clone();
+    let new_version_str = env!("CARGO_PKG_VERSION").to_string();
 
-    config.rust_bucket_version = current_version.to_string();
+    // Resolve the migration plan before mutating anything; this rejects
+    // downgrades without touching the stamp or regenerating files.
+    let plan = plan_migrations(&old_version_str, &new_version_str)?;
+
+    config.rust_bucket_version = new_version_str;
 
     config.save(&config_path)?;
 
@@ -201,6 +269,8 @@ pub fn apply_update(target_dir: &Path) -> Result<ApplyResult, ApplyError> {
     Ok(ApplyResult {
         files_generated,
         verification,
+        migrations: plan.migrations,
+        old_version: Some(old_version_str),
     })
 }
 
@@ -313,6 +383,96 @@ edition = "2021"
                     .any(|p| p.file_name().is_some_and(|n| n == "AGENTS.md"))
             );
         }
+        Ok(())
+    }
+
+    // The full happy paths of apply_init/apply_update are not exercised here:
+    // they end in verify::run_all, which shells out to cargo. The forward-only
+    // guard and migration computation run before any mutation, so they are
+    // covered directly via apply_update (downgrade) and plan_migrations.
+    // apply_init unconditionally sets migrations empty and old_version None.
+
+    /// Write a rust-bucket.toml stamped with `version` into `dir`.
+    fn stamp_config(dir: &Path, version: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let config = Config {
+            rust_bucket_version: version.to_string(),
+            test_timeout: 120,
+            project_name: "test-crate".to_string(),
+        };
+        config.save(&dir.join("rust-bucket.toml"))?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_apply_update_rejects_downgrade() -> Result<(), Box<dyn std::error::Error>> {
+        // A recorded version far above any releasable binary forces the
+        // forward-only guard, which returns before any file is mutated.
+        let temp_dir = TempDir::new()?;
+        create_test_rust_crate(temp_dir.path())?;
+        stamp_config(temp_dir.path(), "999.0.0")?;
+
+        let result = apply_update(temp_dir.path());
+
+        match result {
+            Err(ApplyError::DowngradeNotSupported { recorded, binary }) => {
+                assert_eq!(recorded, Version::new(999, 0, 0));
+                assert!(binary < recorded);
+            }
+            other => return Err(format!("expected DowngradeNotSupported, got {other:?}").into()),
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_apply_update_downgrade_leaves_stamp_untouched() -> Result<(), Box<dyn std::error::Error>>
+    {
+        // The guard must not bump the recorded version when refusing a downgrade.
+        let temp_dir = TempDir::new()?;
+        create_test_rust_crate(temp_dir.path())?;
+        stamp_config(temp_dir.path(), "999.0.0")?;
+
+        let _ = apply_update(temp_dir.path());
+
+        let config = Config::load(&temp_dir.path().join("rust-bucket.toml"))?;
+        assert_eq!(config.rust_bucket_version, "999.0.0");
+        Ok(())
+    }
+
+    #[test]
+    fn test_plan_migrations_forward_bump_collects_guides() -> Result<(), Box<dyn std::error::Error>>
+    {
+        // A 0.5.0 -> 0.6.0 transition crosses the embedded 0.6.0 guide. This is
+        // the logic that populates ApplyResult.migrations on a forward bump.
+        let plan = plan_migrations("0.5.0", "0.6.0")?;
+        assert_eq!(plan.migrations.len(), 1);
+        assert_eq!(plan.migrations[0].version, Version::new(0, 6, 0));
+        Ok(())
+    }
+
+    #[test]
+    fn test_plan_migrations_same_version_is_empty() -> Result<(), Box<dyn std::error::Error>> {
+        let plan = plan_migrations("0.6.0", "0.6.0")?;
+        assert!(plan.migrations.is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn test_plan_migrations_rejects_downgrade() -> Result<(), Box<dyn std::error::Error>> {
+        let result = plan_migrations("0.7.0", "0.6.0");
+        match result {
+            Err(ApplyError::DowngradeNotSupported { recorded, binary }) => {
+                assert_eq!(recorded, Version::new(0, 7, 0));
+                assert_eq!(binary, Version::new(0, 6, 0));
+            }
+            other => return Err(format!("expected DowngradeNotSupported, got {other:?}").into()),
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_plan_migrations_rejects_invalid_version() -> Result<(), Box<dyn std::error::Error>> {
+        let result = plan_migrations("not-a-version", "0.6.0");
+        assert!(matches!(result, Err(ApplyError::VersionParse(_, _))));
         Ok(())
     }
 }

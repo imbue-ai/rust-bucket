@@ -30,12 +30,15 @@
 
 ### 1) CLI
 - `rust-bucket apply`
+- `rust-bucket show-migration`
 
 CLI is responsible for:
 - Validating already `git init` and `cargo init`
 - Collecting user choices (interactive by default)
 - Loading/saving `rust-bucket.toml`
 - Invoking the generator
+
+Migration guides live in `migrations/<version>.md` and are embedded via `rust-embed`. They are surfaced both automatically by `apply` (as a post-verification footer) and on demand by `show-migration`. Upgrades are forward-only (see `DESIGN.md`).
 
 ### 2) Config (`rust-bucket.toml`)
 Stores:
@@ -102,6 +105,11 @@ Post-generation verification should be “one command away”:
 4. Render the template pack into the current directory with overwrite enabled.
 5. Refresh the generator/version stamps across managed files.
 6. Run verification commands (or print them as next steps).
+
+### Migrations
+- Guides are embedded from `migrations/<version>.md` via `rust-embed`.
+- `apply` prints the guides for the version range it just crossed as a post-verification footer; upgrades are forward-only and a downgrade is refused before anything is mutated (see `DESIGN.md`).
+- `show-migration` renders the same guides on demand for an arbitrary version range.
 
 ## Self-hosting
 Self-hosting works automatically because the Rust-Bucket repo follows the same rules:

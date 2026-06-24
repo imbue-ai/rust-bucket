@@ -4,6 +4,20 @@ Detailed design decisions and known design gaps for Rust-Bucket. This file is
 project-owned (not generated): Rust-Bucket never overwrites it. Agents read it
 when present (see the canonical reading list in AGENTS.md "Hard requirements").
 
+## Forward-only
+
+- rust-bucket only ever moves a repo **forward** across versions.
+- Downgrades are **unsupported**: there is no path that lowers the version a repo is pinned to.
+
+### Consequences
+
+- `apply` **refuses** when the running binary's version is older than the version recorded in `rust-bucket.toml`:
+  - it errors out and exits non-zero,
+  - it makes **no changes** — the version stamp is never lowered and no managed files are regenerated.
+- Migrations are computed **only for forward version ranges**: the migrations from one version to another cover
+  `from < version <= to` (exclusive of `from`, inclusive of `to`). A non-forward range (`from >= to`) yields no
+  migrations.
+
 ## Future improvements
 
 ### Persisting Reflection-agent edits back into the template pack

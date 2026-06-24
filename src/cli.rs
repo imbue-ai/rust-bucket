@@ -23,6 +23,15 @@ pub enum Commands {
         #[arg(long)]
         force: bool,
     },
+    /// Show embedded migration guides for a version range
+    ShowMigration {
+        /// Version to migrate from (defaults to the current rust-bucket.toml version)
+        #[arg(long)]
+        from: Option<String>,
+        /// Version to migrate to (defaults to this binary's version)
+        #[arg(long)]
+        to: Option<String>,
+    },
 }
 
 /// CLI-related errors
@@ -84,18 +93,52 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_cli_parsing() {
+    fn test_cli_parsing() -> Result<(), Box<dyn std::error::Error>> {
         // Test parsing the apply command
         let cli = Cli::parse_from(["rust-bucket", "apply"]);
         match cli.command {
             Commands::Apply { force } => assert!(!force),
+            other => return Err(format!("expected Apply, got {other:?}").into()),
         }
 
         // Test parsing the apply command with --force
         let cli = Cli::parse_from(["rust-bucket", "apply", "--force"]);
         match cli.command {
             Commands::Apply { force } => assert!(force),
+            other => return Err(format!("expected Apply, got {other:?}").into()),
         }
+        Ok(())
+    }
+
+    #[test]
+    fn test_show_migration_parsing() -> Result<(), Box<dyn std::error::Error>> {
+        // Without flags both bounds are None.
+        let cli = Cli::parse_from(["rust-bucket", "show-migration"]);
+        match cli.command {
+            Commands::ShowMigration { from, to } => {
+                assert_eq!(from, None);
+                assert_eq!(to, None);
+            }
+            other => return Err(format!("expected ShowMigration, got {other:?}").into()),
+        }
+
+        // With both --from and --to.
+        let cli = Cli::parse_from([
+            "rust-bucket",
+            "show-migration",
+            "--from",
+            "0.5.0",
+            "--to",
+            "0.7.0",
+        ]);
+        match cli.command {
+            Commands::ShowMigration { from, to } => {
+                assert_eq!(from.as_deref(), Some("0.5.0"));
+                assert_eq!(to.as_deref(), Some("0.7.0"));
+            }
+            other => return Err(format!("expected ShowMigration, got {other:?}").into()),
+        }
+        Ok(())
     }
 
     #[test]

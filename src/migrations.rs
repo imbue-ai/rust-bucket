@@ -19,6 +19,22 @@ pub struct Migration {
     pub instructions: String,
 }
 
+/// Message shown when a version range contains no migrations.
+pub const NO_MIGRATIONS_MESSAGE: &str = "No upgrade instructions";
+
+/// Render a slice of migrations into a single stdout-ready string.
+///
+/// Each migration's `instructions` are concatenated in ascending version order,
+/// separated by a blank line. Callers are responsible for ordering the slice;
+/// `migrations_between` already returns migrations sorted ascending.
+pub fn render_migrations(migrations: &[Migration]) -> String {
+    migrations
+        .iter()
+        .map(|migration| migration.instructions.as_str())
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
 /// Errors that can occur when working with migrations
 #[derive(Debug, Error)]
 pub enum MigrationError {
@@ -113,5 +129,39 @@ mod tests {
             assert!(!migration.instructions.is_empty());
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_render_migrations_orders_ascending_with_blank_line() {
+        let migrations = vec![
+            Migration {
+                version: Version::new(0, 6, 0),
+                instructions: "first".to_string(),
+            },
+            Migration {
+                version: Version::new(0, 7, 0),
+                instructions: "second".to_string(),
+            },
+        ];
+        assert_eq!(render_migrations(&migrations), "first\n\nsecond");
+    }
+
+    #[test]
+    fn test_render_migrations_single_has_no_separator() {
+        let migrations = vec![Migration {
+            version: Version::new(0, 6, 0),
+            instructions: "only".to_string(),
+        }];
+        assert_eq!(render_migrations(&migrations), "only");
+    }
+
+    #[test]
+    fn test_render_migrations_empty_is_empty_string() {
+        assert_eq!(render_migrations(&[]), "");
+    }
+
+    #[test]
+    fn test_no_migrations_message_constant() {
+        assert_eq!(NO_MIGRATIONS_MESSAGE, "No upgrade instructions");
     }
 }
