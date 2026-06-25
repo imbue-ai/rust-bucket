@@ -116,7 +116,31 @@ These three facts drive every branching step below:
    (Requires a crates.io token: `cargo login`, or `CARGO_REGISTRY_TOKEN` in the env.)
 3. Verify it went live: re-query the registry and confirm `max_version == <new>`.
 
-## Step 8 — Leave a clean repo
+## Step 8 — Tag a forge release
+Publishing to crates.io does **not** create a git tag or a forge (GitHub/GitLab)
+release — do this explicitly so the version is reflected in the repo's history.
+
+1. Pick the tag: convention is `v<new>` (e.g. `v0.9.6`). Target the merged trunk commit
+   that carries the new version (`main` HEAD from Step 6), referenced by its full SHA.
+2. Decide the notes' scope. List existing tags (`git tag -l | sort -V`) and find the most
+   recent one that actually has a forge release. If earlier published versions were never
+   tagged, scope the changelog from the last **released** tag and say so in the body, so
+   the skipped versions are not lost.
+3. Draft a title (`<Crate> <new>`) and notes (group commits since that tag by theme;
+   end with a `compare/<lasttag>...v<new>` changelog link). Write the body to a file and
+   pass it with `--notes-file` to avoid shell-quoting issues.
+4. Create the release via the forge CLI — this creates the tag on the remote directly:
+   ```bash
+   gh release create v<new> --target <main-sha> --title "<Crate> <new>" \
+     --notes-file <notes-file> --latest
+   ```
+5. Verify: `gh release view v<new>` shows `draft=false`, the expected `targetCommitish`,
+   and the tag (`git ls-remote --tags origin v<new>`) points at `<main-sha>`.
+
+Note for jj repos: `gh release create` creates the tag on the GitHub side, so it does
+**not** touch local jj/git refs and is safe to run from a colocated repo.
+
+## Step 9 — Leave a clean repo
 - jj: abandon the now-empty publish revision so trunk is the head with a fresh empty `@`:
   `jj abandon @` (publishing changes no tracked files). Confirm `jj st` is clean.
 - git: nothing to commit; ensure `git status` is clean.
@@ -133,6 +157,7 @@ Each step maps to a swappable provider so the skill can support other stacks:
 | Merge          | `gh pr merge --merge`               | `glab mr merge`                      |
 | Version truth  | `Cargo.toml` ↔ crates.io API        | same                                 |
 | Publish        | `cargo publish` (+ `--dry-run`)     | same                                 |
+| Tag release    | `gh release create v<new>`          | `glab release create v<new>`         |
 
 ## Pitfalls learned in the first manual run
 - The crates.io API returns 200 with an error body if you omit a `User-Agent`; always send one.
@@ -141,3 +166,6 @@ Each step maps to a swappable provider so the skill can support other stacks:
 - Forgetting `cargo build` leaves `Cargo.lock`'s own package entry stale.
 - A crates.io version is permanent — the `--dry-run` pre-flight is mandatory, not optional.
 - Two irreversible gates need explicit handling: the **merge** and the **publish**.
+- `cargo publish` does not tag the repo; the forge release (Step 8) is a separate step.
+- A version can be live on crates.io yet have no forge tag — check `git tag -l` before
+  scoping release notes so a previously-published-but-untagged version is not skipped.
