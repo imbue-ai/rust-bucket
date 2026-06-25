@@ -338,85 +338,62 @@ pub fn create_claude_symlink(target_dir: &Path) -> Result<PathBuf, GeneratorErro
     Ok(claude_md)
 }
 
-/// Mirror every skill under `.agents/skills/` into `.claude/skills/` via symlink.
+/// Mirror the canonical `.agents/skills/` tree into `.claude/skills/` via a single
+/// directory symlink.
 ///
 /// The canonical skill content lives under the vendor-neutral `.agents/skills/`
-/// tree. Claude Code discovers skills under `.claude/skills/`, so each skill
+/// tree. Claude Code discovers skills under `.claude/skills/`, so the whole
 /// directory is symlinked there — Agent Skills are the primary form, and the
-/// Claude location is a thin pointer at them.
+/// Claude location is a thin pointer at them. A single `.claude/skills` symlink
+/// means new skills appear automatically with no re-linking.
 ///
-/// Returns the paths of the created `.claude/skills/<name>` symlinks. Returns an
-/// empty vector when no `.agents/skills/` tree is present.
+/// Returns the created `.claude/skills` symlink path, or `None` when no
+/// `.agents/skills/` tree is present.
 ///
 /// # Arguments
 /// * `target_dir` - Repository root in which both trees live
 ///
 /// # Errors
-/// Returns `GeneratorError::IoError` if a directory cannot be read or a symlink created.
+/// Returns `GeneratorError::IoError` if the symlink cannot be created.
 #[cfg(unix)]
-pub fn create_skill_symlinks(target_dir: &Path) -> Result<Vec<PathBuf>, GeneratorError> {
+pub fn create_skill_symlinks(target_dir: &Path) -> Result<Option<PathBuf>, GeneratorError> {
     let agents_skills = target_dir.join(".agents/skills");
     if !agents_skills.is_dir() {
-        return Ok(Vec::new());
+        return Ok(None);
     }
 
-    let claude_skills = target_dir.join(".claude/skills");
-    fs::create_dir_all(&claude_skills)?;
+    fs::create_dir_all(target_dir.join(".claude"))?;
+    let link = target_dir.join(".claude/skills");
 
-    let mut created = Vec::new();
-    for entry in fs::read_dir(&agents_skills)? {
-        let entry = entry?;
-        if !entry.file_type()?.is_dir() {
-            continue;
-        }
-        let name = entry.file_name();
-        let link = claude_skills.join(&name);
-
-        // Replace whatever is already at the destination (stale symlink, file, or dir).
-        if link.is_symlink() || link.is_file() {
-            fs::remove_file(&link)?;
-        } else if link.is_dir() {
-            fs::remove_dir_all(&link)?;
-        }
-
-        // Relative target: from .claude/skills/<name>, two hops up reach the repo root.
-        let rel_target = Path::new("../../.agents/skills").join(&name);
-        symlink(&rel_target, &link)?;
-        created.push(link);
+    // On re-apply, remove the previous .claude/skills symlink before recreating it.
+    if link.is_symlink() {
+        fs::remove_file(&link)?;
     }
 
-    Ok(created)
+    // Relative target: from .claude/skills, one hop up reaches the repo root.
+    symlink("../.agents/skills", &link)?;
+
+    Ok(Some(link))
 }
 
-/// Mirror every skill under `.agents/skills/` into `.claude/skills/` (Windows version).
+/// Mirror the canonical `.agents/skills/` tree into `.claude/skills/` (Windows version).
 ///
-/// On Windows we copy the skill directories instead of symlinking them, since
-/// symlinks require elevated privileges.
+/// On Windows we copy the tree instead of symlinking it, since symlinks require
+/// elevated privileges.
 #[cfg(windows)]
-pub fn create_skill_symlinks(target_dir: &Path) -> Result<Vec<PathBuf>, GeneratorError> {
+pub fn create_skill_symlinks(target_dir: &Path) -> Result<Option<PathBuf>, GeneratorError> {
     let agents_skills = target_dir.join(".agents/skills");
     if !agents_skills.is_dir() {
-        return Ok(Vec::new());
+        return Ok(None);
     }
 
     let claude_skills = target_dir.join(".claude/skills");
-    fs::create_dir_all(&claude_skills)?;
-
-    let mut created = Vec::new();
-    for entry in fs::read_dir(&agents_skills)? {
-        let entry = entry?;
-        if !entry.file_type()?.is_dir() {
-            continue;
-        }
-        let dest = claude_skills.join(entry.file_name());
-        if dest.exists() {
-            fs::remove_dir_all(&dest)?;
-        }
-        copy_dir_all(&entry.path(), &dest)?;
-        created.push(dest);
+    if claude_skills.exists() {
+        fs::remove_dir_all(&claude_skills)?;
     }
+    copy_dir_all(&agents_skills, &claude_skills)?;
 
-    Ok(created)
+    Ok(Some(claude_skills))
 }
 
 /// Recursively copy a directory tree (Windows fallback for skill mirroring).
@@ -898,16 +875,13 @@ mod tests {
 
         let created = create_skill_symlinks(temp_dir.path())?;
 
-        let link = temp_dir.path().join(".claude/skills/release-to-crates");
-        assert!(created.contains(&link));
-        assert!(link.is_symlink(), ".claude skill entry should be a symlink");
-        assert_eq!(
-            fs::read_link(&link)?,
-            Path::new("../../.agents/skills/release-to-crates")
-        );
+        let link = temp_dir.path().join(".claude/skills");
+        assert_eq!(created.as_ref(), Some(&link));
+        assert!(link.is_symlink(), ".claude/skills should be a symlink");
+        assert_eq!(fs::read_link(&link)?, Path::new("../.agents/skills"));
         // The symlink must resolve to the canonical content.
         assert_eq!(
-            fs::read_to_string(link.join("SKILL.md"))?,
+            fs::read_to_string(link.join("release-to-crates/SKILL.md"))?,
             "canonical content\n"
         );
         Ok(())
@@ -919,7 +893,7 @@ mod tests {
     {
         let temp_dir = TempDir::new()?;
         let created = create_skill_symlinks(temp_dir.path())?;
-        assert!(created.is_empty());
+        assert!(created.is_none());
         assert!(!temp_dir.path().join(".claude/skills").exists());
         Ok(())
     }
