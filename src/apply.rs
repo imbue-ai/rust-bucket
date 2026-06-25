@@ -195,6 +195,9 @@ pub fn apply_init(target_dir: &Path, force: bool) -> Result<ApplyResult, ApplyEr
     let claude_symlink = generator::create_claude_symlink(target_dir)?;
     files_generated.push(claude_symlink);
 
+    let skill_symlinks = generator::create_skill_symlinks(target_dir)?;
+    files_generated.extend(skill_symlinks);
+
     generator::ensure_gitignore(target_dir)?;
 
     let seeded = generator::seed_files(&temp_path, target_dir, &config)?;
@@ -258,6 +261,9 @@ pub fn apply_update(target_dir: &Path) -> Result<ApplyResult, ApplyError> {
 
     let claude_symlink = generator::create_claude_symlink(target_dir)?;
     files_generated.push(claude_symlink);
+
+    let skill_symlinks = generator::create_skill_symlinks(target_dir)?;
+    files_generated.extend(skill_symlinks);
 
     generator::ensure_gitignore(target_dir)?;
 
