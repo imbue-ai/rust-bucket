@@ -89,9 +89,8 @@ pub fn managed_files() -> Vec<&'static str> {
         ".claude/agents/tidy.md",
         ".claude/agents/reflection.md",
         ".agents/skills/release-to-crates/SKILL.md",
-        // .claude/skills/release-to-crates symlinks to the .agents copy, created separately
         ".agents/skills/deburr-edge-cases/SKILL.md",
-        // .claude/skills/deburr-edge-cases symlinks to the .agents copy, created separately
+        // .claude/skills is a single symlink to the .agents/skills tree, created separately
         ".config/nextest.toml",
         "deny.toml",
         "rustfmt.toml",
