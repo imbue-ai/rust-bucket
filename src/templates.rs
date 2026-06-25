@@ -90,6 +90,8 @@ pub fn managed_files() -> Vec<&'static str> {
         ".claude/agents/reflection.md",
         ".agents/skills/release-to-crates/SKILL.md",
         // .claude/skills/release-to-crates symlinks to the .agents copy, created separately
+        ".agents/skills/deburr-edge-cases/SKILL.md",
+        // .claude/skills/deburr-edge-cases symlinks to the .agents copy, created separately
         ".config/nextest.toml",
         "deny.toml",
         "rustfmt.toml",
@@ -130,7 +132,7 @@ mod tests {
     fn test_managed_files_not_empty() {
         let files = managed_files();
         assert!(!files.is_empty());
-        assert_eq!(files.len(), 17);
+        assert_eq!(files.len(), 18);
     }
 
     #[test]
@@ -158,13 +160,13 @@ mod tests {
     fn test_ratchets_toml_not_managed() {
         let managed = managed_files();
         assert!(!managed.contains(&"ratchets.toml"));
-        assert_eq!(managed.len(), 17);
+        assert_eq!(managed.len(), 18);
     }
 
     #[test]
     fn test_style_guide_not_managed() {
         let managed = managed_files();
         assert!(!managed.contains(&"STYLE_GUIDE.md"));
-        assert_eq!(managed.len(), 17);
+        assert_eq!(managed.len(), 18);
     }
 }
