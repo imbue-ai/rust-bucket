@@ -15,7 +15,12 @@ structurally. The canonical example: instead of enforcing design intent in the t
 
 This is a **quality** pass, not a bug hunt. Every change must be behavior-preserving, with the
 existing test suite as the safety net. It complements a correctness-focused review (which hunts
-bugs); route bug findings there, not here.
+bugs); route bug findings there, not here. If you trip over a genuine correctness bug mid-pass,
+note and surface it separately — do not fix it as part of this pass.
+
+A recognizable shape — an `unwrap_or`, a single-`impl` trait — is a prompt to ask whether the
+construct earns its keep *here*, not a finding in itself. Reason about intent and invariants, not
+form.
 
 ## When to use
 
@@ -25,12 +30,12 @@ bugs); route bug findings there, not here.
 - When the user asks to "simplify", "de-ornament", "remove cruft / ceremony / boilerplate",
   "make bad states unrepresentable", "tighten the types", or "clean up" a set of changes.
 
-## What counts as ornamentation (hunt for these)
+## What counts as ornamentation
 
 1. **Defensive coding the type system should forbid.** Runtime checks, branches, or asserts
-   guarding states a tighter type would make unrepresentable. *Tells:* `Option<bool>` tri-states;
-   sentinel values (`""`/`-1`/`0`) standing in for `Option`/enum; a field that is validated on
-   every read instead of being unconstructable-when-invalid; "this can't happen" guards.
+   guarding states a tighter type would make unrepresentable — for example a tri-state
+   `Option<bool>`, a sentinel (`""`/`-1`/`0`) standing in for an `Option`/enum, a field validated
+   on every read rather than made unconstructable-when-invalid, or a "this can't happen" guard.
 2. **Redundant / over-eager validation.** Re-checking an invariant already guaranteed upstream
    (e.g. re-validating what a parse step already proved).
 3. **Speculative generality / over-abstraction.** A trait, generic, indirection layer, config
@@ -40,7 +45,7 @@ bugs); route bug findings there, not here.
    a fan-out of variants where one would do.
 5. **Dead-but-dressed-up scaffolding** that is *not* a deliberate, documented forward seam.
 
-## What to PRESERVE (restraint is half the skill)
+## What to PRESERVE
 
 Do not strip things that earn their keep. Call them out as intentional rather than flagging them:
 
@@ -58,11 +63,15 @@ Do not strip things that earn their keep. Call them out as intentional rather th
 When unsure whether something is cruft or load-bearing: **it is load-bearing until proven
 otherwise.** Default to keeping.
 
+Finding no ornamentation is a valid and common result — especially on small or already-tight
+diffs. Report "clean" rather than inventing a finding to justify the pass.
+
 ## Process
 
-This is a review-then-fix pass; it needs no ceremony of its own. Run the steps directly, or route
-the fan-out and the edits through whatever review/delegation process the repo otherwise follows.
-Keep edits one-at-a-time and behavior-preserving, and review each before moving on.
+Run the steps directly, or route the fan-out and edits through whatever review/delegation process
+the repo otherwise follows. Keep edits one-at-a-time and behavior-preserving, and review each
+before moving on. Match effort to the diff: for a few files, scan and fix directly; the clustering
+and per-cluster fan-out below are for large, multi-author branches.
 
 ### 1. Scope the diff
 Compute the cumulative branch diff against the merge base and list the changed source files,
@@ -98,7 +107,9 @@ editing — especially for a structural refactor, write the target type design a
 truth-table the change must preserve, plus a test-migration map (migrate tests to the new shape;
 never weaken assertions to pass). Execute in **increasing invasiveness**: small, isolated,
 behavior-preserving cleanups first; the big structural remodel last, on an already-cleaned base.
-After each change, verify cargo and review it before moving on.
+After each change, verify cargo and review it before moving on. If no existing test exercises the
+changed path, the suite is not a safety net for it — add a characterization test first, or lower
+the finding's confidence and flag the gap.
 
 ### 5. Verify suspected cruft is actually removable
 Before deleting a "no-op", confirm it is one. A classic trap: a `let _ = (&field, …)` discard or
@@ -110,10 +121,11 @@ build. Don't trade ornament for a warning.
 
 ### 6. Final verification
 Run the full check suite on the whole de-ornamented stack: `cargo fmt --check`,
-`cargo clippy --all-targets --all-features`, `cargo nextest run`, `ratchets check`. Confirm the
-test count is unchanged or higher and no assertion was loosened.
+`cargo clippy --all-targets --all-features`, `cargo nextest run`, `ratchets check`. Confirm no
+assertion was weakened or deleted to make a change pass — tests that only covered genuinely-removed
+code may go with it, but everything else must be migrated, not loosened.
 
-## Worked examples (patterns to recognize)
+## Worked examples
 
 - **Tri-state collapse → unrepresentable bad state.** `enabled: Option<bool>` rewritten
   `None → Some(true)` at assembly and read via `unwrap_or(false)`, then carried *dead* into a
