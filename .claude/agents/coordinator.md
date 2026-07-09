@@ -78,6 +78,11 @@ When delegating to a subagent, use the Task tool with the appropriate agent:
   - `E0425` "cannot find function/value/variant in this scope" after a module added a new pub item or a new enum variant.
   - "pattern does not mention field X" after a struct gained or renamed a field.
   - "unresolved import" pointing at a module that exists on disk and is declared in `mod.rs` / `lib.rs`.
+  - `E0308` "mismatched types / implicitly returns ()" appearing immediately after a test fn gains a `-> Result<...>` return type plus an `Ok(())` tail. Stale: rust-analyzer lags the signature change.
+  - `E0608` "cannot index into a value of type `Result<...>`" appearing mid-edit while a `?` is being inserted on a previously-unwrapped expression.
+  - `dead_code` warning on a newly added `pub(crate)` item whose only callers live in other modules (rust-analyzer lags the cross-module callers).
+  - `E0560` "struct has no field named X" after a field rename/replacement in the same commit.
+  These shapes arise specifically during fallible-conversion and struct-changing refactors.
   When you see one of these immediately after a coding subagent's commit, run `cargo check --all-targets` once. If it is clean, pass to Judge without a second round; do not re-prompt the subagent.
 
 ## Delegation prompt convention
