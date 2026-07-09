@@ -29,6 +29,16 @@ This project is "typechecker-first": prefer designs the compiler can validate st
 - Prefer typed errors and `Result`.
 - Prefer fallible conversions: `TryFrom` / `TryInto` over `as` casts when failure is possible.
 
+## Ratchet rule scope
+The `ratchets check` gate enforces the panic policy above only partially. A green run is **necessary but not sufficient** for an "eradicate X" campaign: the prose ban is broader than what the tooling detects. This repo enables `no-unwrap`, `no-panic`, and `$common-starter` (which adds `no-todo-comments`/`no-fixme-comments`).
+
+Measured behaviour of the two Rust rules:
+- `no-unwrap` flags `.unwrap()` method calls only. It does **not** flag `.expect(...)` — the `no-expect` rule that would is not enabled here.
+- `no-panic` flags the `panic!` macro only. It does **not** flag `unreachable!()`, `todo!()`, or `unimplemented!()`. (The literal text `todo!` may separately trip `no-todo-comments`, but `unreachable!`/`unimplemented!` are unflagged.)
+- Both rules exclude `**/tests/**` and `**/benches/**` by default, so a `.unwrap()` or `panic!` in a top-level `tests/` file is not flagged. `#[cfg(test)]` modules inside `src/` files are **not** excluded and are still flagged.
+
+The prose policy bans `unwrap()`/`expect()`/`panic!()` in all code including tests, and the same intent covers `unreachable!()`/`todo!()`/`unimplemented!()`. Satisfy the policy by reading the code, not by trusting a green ratchet.
+
 ## API design
 - Prefer small, well-typed domain types ("newtypes") over primitives with comments.
 - Keep implementation details private by default (`pub` is opt-in).
