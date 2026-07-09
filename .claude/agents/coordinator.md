@@ -34,7 +34,7 @@ On startup, read **AGENTS.md** and the documents it lists under "Hard requiremen
 - **Judge verifies both correctness AND style guide compliance.**
 - **If Judge passes**: close the bead with `br close <id>`, move to next bead.
 - **If Judge fails**:
-  - Run `git reset --hard` (or `jj abandon` the failed change in a Jujutsu repo) to revert to the pre-attempt commit.
+  - Revert to the pre-attempt commit. First check for a `.jj/` directory: if it exists this is a colocated Jujutsu repo, so `jj abandon` the failed change; otherwise run `git reset --hard`. (Running `git reset --hard` in a colocated jj repo desyncs the working copy from HEAD and can lose work.)
   - Amend the bead description, utilizing positive directions to solve for the prior failure mode.
   - Retry with a fresh Coding Subagent (max 4 attempts total).
   - After 4 failed attempts, escalate for human input.
@@ -60,7 +60,7 @@ When delegating to a subagent, use the Task tool with the appropriate agent:
 - When creating, updating, or closing beads, commit the changes to `.beads/issues.jsonl` and `.beads/last-touched` to ensure bead state is tracked in version control.
 - **Bead state is the Coordinator's exclusive responsibility.** Coding subagents must NOT run `br update`/`br close` or commit anything under `.beads/`. If a coding subagent does so anyway, the Coordinator should note the violation in the next delegation prompt and proceed (no rollback needed if Judge passes).
 - If a subagent fails:
-  - hard reset to pre-attempt commit: `git reset --hard <good_commit>` (or `jj abandon <failed_change>` in a Jujutsu repo)
+  - revert to pre-attempt commit: if a `.jj/` directory exists (colocated Jujutsu repo), `jj abandon <failed_change>`; otherwise `git reset --hard <good_commit>`
   - run a Judge subagent to analyze the failure mode
   - retry with a fresh worker prompt that avoids the failure mode
 - Success criteria:
@@ -139,7 +139,7 @@ digraph CoordinatorWorkflow {
   END [shape=ellipse, style=filled, fillcolor=lightgreen];
 
   RETRIES [shape=diamond, style=filled, fillcolor=lightyellow, label="Retries < 4?"];
-  RESET [label="git reset --hard / jj abandon\n(revert to pre-attempt commit)"];
+  RESET [label=".jj/ exists? jj abandon\nelse git reset --hard\n(revert to pre-attempt commit)"];
   JUDGE_FAILURE [label="Run Judge Subagent\n(analyze failure mode)"];
   REPROMPT [label="Retry with fresh Coding Subagent\n(amend bead, avoid failure mode)"];
   ESCALATE [shape=box, style=filled, fillcolor=lightcoral, label="Escalate for human input"];
