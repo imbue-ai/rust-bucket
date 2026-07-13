@@ -104,15 +104,24 @@ Mitigation when authoring bead descriptions from a plan:
 - When Judge surfaces a gap with no marker, treat it as a real fail and retry.
 
 ## Commit-message escaping
-Apostrophes (e.g. `it's`) in bash heredocs can break `git commit -m`. When a commit message contains single quotes, write the message to a temp file and use `-F`:
+Apostrophes (e.g. `it's`) in an inline message (`git commit -m 'text'` or `jj desc -m 'text'`) can break the message under bash single-quoting. The mitigation is the same in either VCS: write the message to a temp file and feed the file in rather than passing the text inline. Which command consumes the file branches on `.jj/` detection, exactly as the rollback guidance above does:
+
 ```bash
 cat > /tmp/commit-msg.txt <<'EOF'
 Your subject line
 
 Body with an apostrophe is safe here.
 EOF
-git commit -F /tmp/commit-msg.txt
+if [ -d .jj/ ]; then
+  # Colocated Jujutsu repo: describe the working-copy commit @ from stdin.
+  # `--stdin` is non-interactive (no $EDITOR); jj has no -F/--file flag.
+  jj describe --stdin < /tmp/commit-msg.txt
+else
+  git commit -F /tmp/commit-msg.txt
+fi
 ```
+
+In a colocated jj repo a bare `git commit` commits nothing useful (the working copy is not staged), so the `.jj/` branch is the path to fall into by default.
 
 ## Policy rules are not negotiable — conform, never route around
 The repo's configured lint and policy rules (clippy `deny` lints, `deny.toml`, `rustfmt`, and any project lint or policy-check tool) apply to ALL code in the repo, **including test code**. They are correct as written. A subagent must NEVER route around them — not by moving a `src/` test to `tests/`, not by carving `#[cfg(test)]` out of a rule's scope, not by adding `allow`/`exclude` globs, not by raising a lint threshold or allow-count to absorb a fresh violation.
