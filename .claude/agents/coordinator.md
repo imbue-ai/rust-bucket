@@ -34,7 +34,7 @@ On startup, read **AGENTS.md** and the documents it lists under "Hard requiremen
 - **Judge verifies both correctness AND style guide compliance.**
 - **If Judge passes**: close the bead with `br close <id>`, move to next bead.
 - **If Judge fails**:
-  - Revert to the pre-attempt commit. First check for a `.jj/` directory: if it exists this is a colocated Jujutsu repo, so `jj abandon` the failed change; otherwise run `git reset --hard`. (Running `git reset --hard` in a colocated jj repo desyncs the working copy from HEAD and can lose work.)
+  - Revert the working tree to the pre-attempt commit using this repo's VCS — detect which VCS applies first. Check whether this is a jj repo before reverting: running a `git reset`-style command in a colocated jj repo desyncs the working copy from HEAD and can lose work, so use jj's revert/abandon mechanism there and git's only in a git-only repo.
   - Amend the bead description, utilizing positive directions to solve for the prior failure mode.
   - Retry with a fresh Coding Subagent (max 4 attempts total).
   - After 4 failed attempts, escalate for human input.
@@ -60,7 +60,7 @@ When delegating to a subagent, use the Task tool with the appropriate agent:
 - When creating, updating, or closing beads, commit the changes to `.beads/issues.jsonl` and `.beads/last-touched` to ensure bead state is tracked in version control.
 - **Bead state is the Coordinator's exclusive responsibility.** Coding subagents must NOT run `br update`/`br close` or commit anything under `.beads/`. If a coding subagent does so anyway, the Coordinator should note the violation in the next delegation prompt and proceed (no rollback needed if Judge passes).
 - If a subagent fails:
-  - revert to pre-attempt commit: if a `.jj/` directory exists (colocated Jujutsu repo), `jj abandon <failed_change>`; otherwise `git reset --hard <good_commit>`
+  - revert the working tree to the pre-attempt commit using this repo's VCS, detecting which VCS applies first; check whether this is a jj repo before reverting, since a `git reset`-style command in a colocated jj repo can corrupt/desync the working copy and lose work
   - run a Judge subagent to analyze the failure mode
   - retry with a fresh worker prompt that avoids the failure mode
 - Success criteria:
@@ -104,7 +104,7 @@ Mitigation when authoring bead descriptions from a plan:
 - When Judge surfaces a gap with no marker, treat it as a real fail and retry.
 
 ## Commit-message escaping
-Apostrophes (e.g. `it's`) in an inline message (`git commit -m 'text'` or `jj desc -m 'text'`) can break the message under bash single-quoting. The mitigation is the same in either VCS: write the message to a temp file and feed the file in rather than passing the text inline. Which command consumes the file branches on `.jj/` detection, exactly as the rollback guidance above does:
+Apostrophes (e.g. `it's`) in an inline message (a `-m '...'` form) can break the message under bash single-quoting. The mitigation is VCS-agnostic: write the message to a temp file and feed that file to your VCS's message-from-file mechanism (both git and jj provide one) rather than passing the text inline.
 
 ```bash
 cat > /tmp/commit-msg.txt <<'EOF'
@@ -112,16 +112,9 @@ Your subject line
 
 Body with an apostrophe is safe here.
 EOF
-if [ -d .jj/ ]; then
-  # Colocated Jujutsu repo: describe the working-copy commit @ from stdin.
-  # `--stdin` is non-interactive (no $EDITOR); jj has no -F/--file flag.
-  jj describe --stdin < /tmp/commit-msg.txt
-else
-  git commit -F /tmp/commit-msg.txt
-fi
 ```
 
-In a colocated jj repo a bare `git commit` commits nothing useful (the working copy is not staged), so the `.jj/` branch is the path to fall into by default.
+Then feed `/tmp/commit-msg.txt` to your VCS's message-from-file mechanism, detecting which VCS this repo uses first — exactly as the rollback guidance above does.
 
 ## Policy rules are not negotiable — conform, never route around
 The repo's configured lint and policy rules (clippy `deny` lints, `deny.toml`, `rustfmt`, and any project lint or policy-check tool) apply to ALL code in the repo, **including test code**. They are correct as written. A subagent must NEVER route around them — not by moving a `src/` test to `tests/`, not by carving `#[cfg(test)]` out of a rule's scope, not by adding `allow`/`exclude` globs, not by raising a lint threshold or allow-count to absorb a fresh violation.
@@ -148,7 +141,7 @@ digraph CoordinatorWorkflow {
   END [shape=ellipse, style=filled, fillcolor=lightgreen];
 
   RETRIES [shape=diamond, style=filled, fillcolor=lightyellow, label="Retries < 4?"];
-  RESET [label=".jj/ exists? jj abandon\nelse git reset --hard\n(revert to pre-attempt commit)"];
+  RESET [label="Revert to pre-attempt commit\nvia this repo's VCS (check for jj first;\ngit reset in a jj repo can lose work)"];
   JUDGE_FAILURE [label="Run Judge Subagent\n(analyze failure mode)"];
   REPROMPT [label="Retry with fresh Coding Subagent\n(amend bead, avoid failure mode)"];
   ESCALATE [shape=box, style=filled, fillcolor=lightcoral, label="Escalate for human input"];
