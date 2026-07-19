@@ -34,7 +34,7 @@ On startup, read **AGENTS.md** and the documents it lists under "Hard requiremen
 - **Judge verifies both correctness AND style guide compliance.**
 - **If Judge passes**: close the bead with `br close <id>`, move to next bead.
 - **If Judge fails**:
-  - Run `git reset --hard` (or `jj abandon` the failed change in a Jujutsu repo) to revert to the pre-attempt commit.
+  - Revert the working tree to the pre-attempt commit using this repo's VCS — detect which VCS applies first. Check whether this is a jj repo before reverting: running a `git reset`-style command in a colocated jj repo desyncs the working copy from HEAD and can lose work, so use jj's revert/abandon mechanism there and git's only in a git-only repo.
   - Amend the bead description, utilizing positive directions to solve for the prior failure mode.
   - Retry with a fresh Coding Subagent (max 4 attempts total).
   - After 4 failed attempts, escalate for human input.
@@ -60,7 +60,7 @@ When delegating to a subagent, use the Task tool with the appropriate agent:
 - When creating, updating, or closing beads, commit the changes to `.beads/issues.jsonl` and `.beads/last-touched` to ensure bead state is tracked in version control.
 - **Bead state is the Coordinator's exclusive responsibility.** Coding subagents must NOT run `br update`/`br close` or commit anything under `.beads/`. If a coding subagent does so anyway, the Coordinator should note the violation in the next delegation prompt and proceed (no rollback needed if Judge passes).
 - If a subagent fails:
-  - hard reset to pre-attempt commit: `git reset --hard <good_commit>` (or `jj abandon <failed_change>` in a Jujutsu repo)
+  - revert the working tree to the pre-attempt commit using this repo's VCS, detecting which VCS applies first; check whether this is a jj repo before reverting, since a `git reset`-style command in a colocated jj repo can corrupt/desync the working copy and lose work
   - run a Judge subagent to analyze the failure mode
   - retry with a fresh worker prompt that avoids the failure mode
 - Success criteria:
@@ -78,6 +78,11 @@ When delegating to a subagent, use the Task tool with the appropriate agent:
   - `E0425` "cannot find function/value/variant in this scope" after a module added a new pub item or a new enum variant.
   - "pattern does not mention field X" after a struct gained or renamed a field.
   - "unresolved import" pointing at a module that exists on disk and is declared in `mod.rs` / `lib.rs`.
+  - `E0308` "mismatched types / implicitly returns ()" appearing immediately after a test fn gains a `-> Result<...>` return type plus an `Ok(())` tail. Stale: rust-analyzer lags the signature change.
+  - `E0608` "cannot index into a value of type `Result<...>`" appearing mid-edit while a `?` is being inserted on a previously-unwrapped expression.
+  - `dead_code` warning on a newly added `pub(crate)` item whose only callers live in other modules (rust-analyzer lags the cross-module callers).
+  - `E0560` "struct has no field named X" after a field rename/replacement in the same commit.
+  These shapes arise specifically during fallible-conversion and struct-changing refactors.
   When you see one of these immediately after a coding subagent's commit, run `cargo check --all-targets` once. If it is clean, pass to Judge without a second round; do not re-prompt the subagent.
 
 ## Delegation prompt convention
@@ -99,20 +104,22 @@ Mitigation when authoring bead descriptions from a plan:
 - When Judge surfaces a gap with no marker, treat it as a real fail and retry.
 
 ## Commit-message escaping
-Apostrophes (e.g. `it's`) in bash heredocs can break `git commit -m`. When a commit message contains single quotes, write the message to a temp file and use `-F`:
+Apostrophes (e.g. `it's`) in an inline message (a `-m '...'` form) can break the message under bash single-quoting. The mitigation is VCS-agnostic: write the message to a temp file and feed that file to your VCS's message-from-file mechanism (both git and jj provide one) rather than passing the text inline.
+
 ```bash
 cat > /tmp/commit-msg.txt <<'EOF'
 Your subject line
 
 Body with an apostrophe is safe here.
 EOF
-git commit -F /tmp/commit-msg.txt
 ```
+
+Then feed `/tmp/commit-msg.txt` to your VCS's message-from-file mechanism, detecting which VCS this repo uses first — exactly as the rollback guidance above does.
 
 ## Policy rules are not negotiable — conform, never route around
 The repo's configured lint and policy rules (clippy `deny` lints, `deny.toml`, `rustfmt`, and any project lint or policy-check tool) apply to ALL code in the repo, **including test code**. They are correct as written. A subagent must NEVER route around them — not by moving a `src/` test to `tests/`, not by carving `#[cfg(test)]` out of a rule's scope, not by adding `allow`/`exclude` globs, not by raising a lint threshold or allow-count to absorb a fresh violation.
 
-- If the repo bans constructs such as `.unwrap()` / `.expect(...)` / `panic!(...)` (enforced here by the `no-unwrap` / `no-panic` ratchets), that ban includes test code; see RUST_STYLE_GUIDE.md for the exact rule and its exceptions. Convert to the fallible idiom instead — see `coding.md`.
+- If the repo bans constructs such as `.unwrap()` / `.expect(...)` / `panic!(...)`, that ban is policy and includes test code — even though the enabled ratchets catch only `.unwrap()` and `panic!` (see RUST_STYLE_GUIDE.md "Ratchet rule scope"). See RUST_STYLE_GUIDE.md for the exact rule and its exceptions; convert to the fallible idiom instead — see `coding.md`.
 - If you ever see a commit that routed around a rule (test relocated to dodge it, threshold/allow-count raised to absorb a new violation, prose weakened to dodge a comment lint), that is a DEFECT to revert, not a pattern to bless. File a P1 to make the offending code conform, and reset the workaround.
 - A threshold/allow-count increase is only ever justified for pre-existing violations being formally tracked — never to absorb a violation the current bead introduced. Watch the lint/policy config diff on every bead: if an allow-count or threshold moved in the permissive direction, the bead added banned constructs and must be sent back.
 
@@ -134,7 +141,7 @@ digraph CoordinatorWorkflow {
   END [shape=ellipse, style=filled, fillcolor=lightgreen];
 
   RETRIES [shape=diamond, style=filled, fillcolor=lightyellow, label="Retries < 4?"];
-  RESET [label="git reset --hard / jj abandon\n(revert to pre-attempt commit)"];
+  RESET [label="Revert to pre-attempt commit\nvia this repo's VCS (check for jj first;\ngit reset in a jj repo can lose work)"];
   JUDGE_FAILURE [label="Run Judge Subagent\n(analyze failure mode)"];
   REPROMPT [label="Retry with fresh Coding Subagent\n(amend bead, avoid failure mode)"];
   ESCALATE [shape=box, style=filled, fillcolor=lightcoral, label="Escalate for human input"];
